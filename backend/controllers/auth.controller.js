@@ -21,9 +21,8 @@ export const refreshToken = (req, res) => {
 
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-    });
+secure: true,
+sameSite: "none",    });
 
     res.json({ message: "Token refreshed" });
 
@@ -121,8 +120,17 @@ if (!user) {
 
 //Logout
 export const logout = (req, res) => {
-  res.clearCookie("accessToken");
-  res.clearCookie("refreshToken");
+  res.clearCookie("accessToken", {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+});
+
+res.clearCookie("refreshToken", {
+  httpOnly: true,
+  secure: true,
+  sameSite: "none",
+});
 
   res.json({ message: "Logged out" });
 };
