@@ -68,17 +68,17 @@ const handleLogin = async () => {
 
         <div className="text-center text-gray-500 mb-2">OR</div>
 
-        <Link to="http://localhost:5000/api/auth/google">
+<a href={`${process.env.REACT_APP_API_URL}/auth/google`}>
           <button className="w-full border py-2 rounded mb-2">
             Continue with Google
           </button>
-        </Link>
+        </a>
 
-        <Link to="http://localhost:5000/api/auth/github">
+        <a href={`${process.env.REACT_APP_API_URL}/auth/github`}>
           <button className="w-full bg-black text-white py-2 rounded">
             Continue with GitHub
           </button>
-        </Link>
+        </a>
         <p className="text-center mt-3">
   Don't have account?{" "}
 <Link to="/signup" className="text-blue-500">Signup</Link>
