@@ -19,13 +19,13 @@ export const generateTokens = (id) => {
 export const setCookies = (res, accessToken, refreshToken) => {
   res.cookie("accessToken", accessToken, {
     httpOnly: true,
-    secure: false, // true in production
-    sameSite: "lax",
+    secure: true, // true in production
+    sameSite: "none",
   });
 
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
-    secure: false,
-    sameSite: "lax",
+    secure: true, // true in production
+    sameSite: "none",
   });
 };
