@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { useCallback } from "react";
 export default function OTP() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [time, setTime] = useState(60);
@@ -11,26 +10,37 @@ export default function OTP() {
 
   const email = localStorage.getItem("email");
 
- useEffect(() => {
-  const timer = setInterval(() => {
-    setTime(prev => (prev > 0 ? prev - 1 : 0));
-  }, 1000);
-
-  return () => clearInterval(timer);
-}, []);
-
-useEffect(() => {
-  if (otp.every(d => d !== "")) {
-    verify();
-  }
-}, [otp, verify]);
-
   useEffect(() => {
-  if (otp.every(d => d !== "")) {
-    verify();
-  }
-}, [otp]);
+    const timer = setInterval(() => {
+      setTime(prev => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
 
+    return () => clearInterval(timer);
+  }, []);
+
+  // ✅ VERIFY FUNCTION (MOVE ABOVE)
+  const verify = useCallback(async () => {
+    try {
+      const finalOtp = otp.join("");
+
+      await api.post("/auth/verify-otp", { email, otp: finalOtp });
+
+      toast.success("Verified successfully 🚀");
+      navigate("/login");
+
+    } catch (err) {
+      toast.error(err.response?.data);
+    }
+  }, [otp, email, navigate]);
+
+  // ✅ AUTO SUBMIT OTP
+  useEffect(() => {
+    if (otp.every(d => d !== "")) {
+      verify();
+    }
+  }, [otp, verify]);
+
+  // INPUT HANDLER
   const handleChange = (value, index) => {
     if (!/^[0-9]?$/.test(value)) return;
 
@@ -43,33 +53,20 @@ useEffect(() => {
     }
   };
 
-const verify = useCallback(async () => {
-  try {
-    const finalOtp = otp.join("");
-
-    await api.post("/auth/verify-otp", { email, otp: finalOtp });
-
-    toast.success("Verified successfully 🚀");
-    navigate("/login");
-
-  } catch (err) {
-    toast.error(err.response?.data);
-  }
-}, [otp, email, navigate]);
-
+  // RESEND OTP
   const resendOtp = async () => {
-  try {
-    await api.post("/auth/resend-otp", { email });
+    try {
+      await api.post("/auth/resend-otp", { email });
 
-    toast.success("OTP resent 📩");
+      toast.success("OTP resent 📩");
 
-    setTime(60);
-    setOtp(["", "", "", "", "", ""]);
+      setTime(60);
+      setOtp(["", "", "", "", "", ""]);
 
-  } catch (err) {
-    toast.error(err.response?.data);
-  }
-};
+    } catch (err) {
+      toast.error(err.response?.data);
+    }
+  };
 
   return (
     <div className="h-screen flex items-center justify-center bg-gradient-to-r from-indigo-500 to-purple-500">
@@ -104,12 +101,12 @@ const verify = useCallback(async () => {
         </button>
 
         {time === 0 ? (
-  <button onClick={resendOtp} className="text-blue-500">
-    Resend OTP
-  </button>
-) : (
-  <p className="text-gray-400">Resend in {time}s</p>
-)}
+          <button onClick={resendOtp} className="text-blue-500">
+            Resend OTP
+          </button>
+        ) : (
+          <p className="text-gray-400">Resend in {time}s</p>
+        )}
       </motion.div>
     </div>
   );
