@@ -1,0 +1,15 @@
+# Global ignores
+node_modules/
+.env
+.env.*
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
