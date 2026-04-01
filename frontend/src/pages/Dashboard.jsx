@@ -9,7 +9,7 @@ export default function Dashboard() {
 useEffect(() => {
   api.get("/auth/protected")
     .catch(() => navigate("/login"));
-}, []);
+}, [navigate]);
   const logout = async () => {
   await api.post("/auth/logout");
 

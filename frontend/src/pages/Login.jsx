@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 
 export default function Login() {
   const [form, setForm] = useState({});
-  const [success, setSuccess] = useState("");
     const [loading, setLoading] = useState(false);
 
 
@@ -43,7 +42,7 @@ const handleLogin = async () => {
         transition={{ duration: 0.4 }}
         className="bg-white p-8 rounded-2xl shadow-xl w-96 text-center backdrop-blur-md"
       >
-        {success && <p className="text-green-500 text-sm mb-2">{success}</p>}<h2 className="text-xl font-bold mb-4">Login</h2>
+       <h2 className="text-xl font-bold mb-4">Login</h2>
 
         <input
           placeholder="Email"

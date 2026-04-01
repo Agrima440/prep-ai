@@ -3,7 +3,7 @@ import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-
+import { useCallback } from "react";
 export default function OTP() {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [time, setTime] = useState(60);
@@ -23,7 +23,7 @@ useEffect(() => {
   if (otp.every(d => d !== "")) {
     verify();
   }
-}, [otp]);
+}, [otp, verify]);
 
   useEffect(() => {
   if (otp.every(d => d !== "")) {
@@ -43,7 +43,7 @@ useEffect(() => {
     }
   };
 
- const verify = async () => {
+const verify = useCallback(async () => {
   try {
     const finalOtp = otp.join("");
 
@@ -55,7 +55,7 @@ useEffect(() => {
   } catch (err) {
     toast.error(err.response?.data);
   }
-};
+}, [otp, email, navigate]);
 
   const resendOtp = async () => {
   try {
