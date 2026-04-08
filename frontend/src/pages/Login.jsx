@@ -25,7 +25,7 @@ const handleLogin = async () => {
 
     toast.success("Welcome back 🎉");
 
-    navigate("/report");
+    navigate("/interview");
 
   } catch (err) {
     toast.error(err.response?.data);

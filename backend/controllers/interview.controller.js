@@ -1,26 +1,36 @@
-import { generateInterviewReport } from "../services/ai.service.js";
-import interviewReportModel from "../models/interviewReport.model.js";
-import User from "../models/User.js";
-
+import pdfParse from "pdf-parse";
 
 export const generateInterviewReportController = async (req, res) => {
-const resumeContent = await (new pdfParse.PDFParse(req.file.buffer)).getText();   
-const { jobDescription, selfDescription } = req.body;
-const interviewReportByAi=await generateInterviewReport({
-    resume:resumeContent.text,
-    selfDescription,
-    jobDescription
-})
-const interviewReport = await interviewReportModel.create({
-  user: req.user._id,   // ⚠️ lowercase 'user'
-  resume: resumeContent.text,
-  selfDescription,
-  jobDescription,
-  ...interviewReportByAi
-});
+  try {
+    if (!req.file) {
+      return res.status(400).json("Resume file required");
+    }
 
-res.status(201).json({
-    message: "Interview report generated successfully",
-    interviewReport 
-})
-}
+    const pdfData = await pdfParse(req.file.buffer);
+
+    const { jobDescription, selfDescription } = req.body;
+
+    const interviewReportByAi = await generateInterviewReport({
+      resume: pdfData.text,
+      selfDescription,
+      jobDescription
+    });
+
+    const interviewReport = await interviewReportModel.create({
+      user: req.user._id,
+      resume: pdfData.text,
+      selfDescription,
+      jobDescription,
+      ...interviewReportByAi
+    });
+
+    res.status(201).json({
+      message: "Interview report generated successfully",
+      interviewReport
+    });
+
+  } catch (err) {
+    console.log(err);
+    res.status(500).json("Server error");
+  }
+};
