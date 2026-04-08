@@ -12,10 +12,14 @@ export default function InterviewForm() {
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
-    if (!file || !jobDescription) {
-      toast.error("Please fill required fields");
-      return;
-    }
+   if (!file || !jobDescription || !selfDescription) {
+  toast.error("Please fill all fields");
+  return;
+}
+if (file && file.type !== "application/pdf") {
+  toast.error("Only PDF allowed");
+  return;
+}
 
     try {
       setLoading(true);
