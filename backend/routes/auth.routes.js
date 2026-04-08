@@ -5,7 +5,8 @@ import {
   signup, verifyOtp, login, loginWithOtp,
   refreshToken,
   logout,
-  resendOtp
+  resendOtp,
+  getUserController
 } from "../controllers/auth.controller.js";
 import { generateTokens, setCookies } from "../utils/token.js";
 
@@ -48,5 +49,5 @@ router.get("/protected", protect, (req, res) => {
   res.json({ message: "Protected data" });
 });
 router.post("/resend-otp", resendOtp);
-
+router.get("/get-User", protect, getUserController );
 export default router;
