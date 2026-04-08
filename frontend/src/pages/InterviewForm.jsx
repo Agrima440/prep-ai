@@ -32,8 +32,9 @@ export default function InterviewForm() {
       toast.success("Report generated 🚀");
 
       // 👉 send data to next page
-      navigate("/report", { state: res.data.interviewReport });
+localStorage.setItem("report", JSON.stringify(res.data.interviewReport));
 
+navigate("/report");
     } catch (err) {
       toast.error("Failed to generate report");
     } finally {
