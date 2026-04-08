@@ -1,45 +1,29 @@
 import { useLocation } from "react-router-dom";
-import ScoreCard from "../components/ScoreCard";
-import QuestionCard from "../components/QuestionCard";
 
 export default function InterviewReport() {
 
+  // ✅ first define data
+  const { state } = useLocation();
 
   const data =
-    data || JSON.parse(localStorage.getItem("report"));
+    state || JSON.parse(localStorage.getItem("report"));
 
+  // ✅ then use it
   if (!data) return <p>No data found</p>;
+
   return (
-    <div className="p-10 max-w-4xl mx-auto space-y-6">
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Interview Report</h1>
 
-      <ScoreCard score={data.matchScore} />
+      <p><strong>Match Score:</strong> {data.matchScore}</p>
 
-      {/* Skill Gaps */}
-      <div className="bg-white p-4 rounded shadow">
-        <h2 className="font-bold">Skill Gaps</h2>
-        {data.skillGaps.map((s, i) => (
-          <p key={i}>
-            {s.skill} - <span className="text-red-500">{s.severity}</span>
-          </p>
-        ))}
-      </div>
-
-      {/* Technical Questions */}
-      <div className="bg-white p-4 rounded shadow">
-        <h2 className="font-bold">Technical Questions</h2>
-        {data.technicalQuestions.map((q, i) => (
-          <QuestionCard key={i} {...q} />
-        ))}
-      </div>
-
-      {/* Behavioral Questions */}
-      <div className="bg-white p-4 rounded shadow">
-        <h2 className="font-bold">Behavioral Questions</h2>
-        {data.behavioralQuestions.map((q, i) => (
-          <QuestionCard key={i} {...q} />
-        ))}
-      </div>
-
+      <h2 className="text-xl mt-4">Technical Questions</h2>
+      {data.technicalQuestions?.map((q, i) => (
+        <div key={i} className="border p-3 my-2 rounded">
+          <p><strong>Q:</strong> {q.question}</p>
+          <p><strong>A:</strong> {q.answer}</p>
+        </div>
+      ))}
     </div>
   );
 }
