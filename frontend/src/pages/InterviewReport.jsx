@@ -2,14 +2,15 @@ import { useLocation } from "react-router-dom";
 
 export default function InterviewReport() {
 
-  // ✅ define first
-  const { state } = useLocation();
+  const location = useLocation(); // ✅ use variable explicitly
 
   const data =
-    state || JSON.parse(localStorage.getItem("report"));
+    location.state ||
+    JSON.parse(localStorage.getItem("report") || "null"); // ✅ safe parsing
 
-  // ✅ then use
-  if (!data) return <p>No data found</p>;
+  if (!data) {
+    return <p>No data found</p>;
+  }
 
   return (
     <div className="p-6">
