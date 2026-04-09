@@ -1,6 +1,7 @@
 import { createRequire } from "module";
 const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse");
+
+const pdfParse = require("pdf-parse").default;
 
 import { generateInterviewReport } from "../services/ai.service.js";
 import interviewReportModel from "../models/interviewReport.model.js";
