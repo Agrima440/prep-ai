@@ -1,5 +1,6 @@
-import pkg from "pdf-parse";
-const pdfParse = pkg;
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const pdfParse = require("pdf-parse");
 
 import { generateInterviewReport } from "../services/ai.service.js";
 import interviewReportModel from "../models/interviewReport.model.js";
