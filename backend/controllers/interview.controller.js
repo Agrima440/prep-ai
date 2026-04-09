@@ -1,6 +1,5 @@
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const pdfParse = require("pdf-parse");
+import pkg from "pdf-parse";
+const pdfParse = pkg;
 
 import { generateInterviewReport } from "../services/ai.service.js";
 import interviewReportModel from "../models/interviewReport.model.js";
@@ -35,7 +34,7 @@ export const generateInterviewReportController = async (req, res) => {
     });
 
   } catch (err) {
-    console.log(err);
-    res.status(500).json("Server error");
+    console.log("ERROR:", err);
+    res.status(500).json(err.message || "Server error");
   }
 };
