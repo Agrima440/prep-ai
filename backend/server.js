@@ -20,7 +20,7 @@ connectDB();
 // invokeGeminiAi();
 const app = express();
 app.use(cors({
-  origin: [process.env.FRONTEND_URL] || "https://prep-ai-beige.vercel.app",
+  origin: process.env.FRONTEND_URL || "https://prep-ai-beige.vercel.app",
   credentials: true
 }));
 app.options("*", cors());
