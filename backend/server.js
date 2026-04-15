@@ -19,15 +19,23 @@ connectDB();
 // generateInterviewReport({resume, selfDescription, jobDescription})
 // invokeGeminiAi();
 const app = express();
+app.use(cors({
+  origin: [process.env.FRONTEND_URL] || "https://prep-ai-beige.vercel.app",
+  credentials: true
+}));
+app.options("*", cors());
 
 app.use(express.json());
 app.use(cookieParser());
 app.use(passport.initialize());
 
-app.use(cors({
-  origin: [process.env.FRONTEND_URL],
-  credentials: true
-}));
+app.get("/", (req, res) => {
+  res.status(200).json({
+    status: "OK",
+    message: "Server is running 🚀",
+    time: new Date()
+  });
+});
 app.use("/api/auth", authRoutes);
 app.use("/api/interview", interviewRoute);
 
