@@ -17,11 +17,6 @@ export default function InterviewForm() {
       return;
     }
 
-    if (file && file.type !== "application/pdf") {
-      toast.error("Only PDF allowed");
-      return;
-    }
-
     try {
       setLoading(true);
 
@@ -44,46 +39,50 @@ export default function InterviewForm() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0f172a] via-[#111827] to-[#1f2937] text-white p-6">
+    <div className="min-h-screen bg-[#0B0F19] text-white flex flex-col items-center p-6">
 
-      {/* Header */}
-      <div className="text-center mb-10">
+      {/* HEADER */}
+      <div className="text-center max-w-2xl mb-10">
         <h1 className="text-4xl font-bold">
           Create Your Custom{" "}
           <span className="text-pink-500">Interview Plan</span>
         </h1>
-        <p className="text-gray-400 mt-2">
-          Let AI analyze your profile and job requirements 🚀
+        <p className="text-gray-400 mt-3">
+          Let our AI analyze the job requirements and your profile to build a winning strategy.
         </p>
       </div>
 
-      {/* Main Card */}
-      <div className="grid md:grid-cols-2 gap-6 bg-white/5 backdrop-blur-xl border border-white/10 p-6 rounded-2xl shadow-xl">
+      {/* MAIN CONTAINER */}
+      <div className="w-full max-w-5xl bg-[#111827] border border-gray-700 rounded-2xl p-6 grid md:grid-cols-2 gap-6 shadow-xl">
 
-        {/* LEFT - JD */}
-        <div>
-          <h2 className="text-lg font-semibold mb-2">
-            Target Job Description
-          </h2>
+        {/* LEFT SIDE */}
+        <div className="flex flex-col">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="font-semibold">Target Job Description</h2>
+            <span className="text-xs bg-pink-600 px-2 py-1 rounded">REQUIRED</span>
+          </div>
 
           <textarea
             placeholder="Paste job description..."
-            className="w-full h-64 p-4 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            className="flex-1 h-64 p-4 rounded-lg bg-[#0B0F19] border border-gray-700 focus:ring-2 focus:ring-pink-500 outline-none"
             onChange={(e) => setJobDescription(e.target.value)}
           />
         </div>
 
-        {/* RIGHT */}
+        {/* RIGHT SIDE */}
         <div className="flex flex-col gap-4">
 
           {/* Upload */}
           <div>
-            <h2 className="text-lg font-semibold mb-2">
-              Upload Resume
-            </h2>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-semibold">Upload Resume</h2>
+              <span className="text-xs bg-green-600 px-2 py-1 rounded">
+                BEST RESULTS
+              </span>
+            </div>
 
-            <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-500 rounded-xl h-40 cursor-pointer hover:border-pink-500 transition">
-              <p className="text-gray-400">
+            <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-pink-500 transition">
+              <p className="text-gray-400 text-sm">
                 {file ? file.name : "Click to upload PDF"}
               </p>
               <input
@@ -95,31 +94,30 @@ export default function InterviewForm() {
           </div>
 
           {/* OR */}
-          <div className="text-center text-gray-500">OR</div>
+          <div className="text-center text-gray-500 text-sm">OR</div>
 
-          {/* Self Description */}
+          {/* SELF DESCRIPTION */}
           <textarea
-            placeholder="Write about your skills..."
-            className="w-full h-32 p-4 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-pink-500"
+            placeholder="Briefly describe your experience, skills..."
+            className="h-32 p-4 rounded-lg bg-[#0B0F19] border border-gray-700 focus:ring-2 focus:ring-pink-500 outline-none"
             onChange={(e) => setSelfDescription(e.target.value)}
           />
 
-          {/* Info */}
-          <div className="bg-blue-500/10 border border-blue-500/20 text-blue-300 p-3 rounded-lg text-sm">
-            Either Resume or Self Description is required
+          {/* INFO BOX */}
+          <div className="bg-blue-900/30 border border-blue-500/30 text-blue-300 text-sm p-3 rounded-lg">
+            Either a Resume or Self Description is required
           </div>
         </div>
       </div>
 
-      {/* Button */}
-      <div className="flex justify-center mt-8">
-        <button
-          onClick={handleSubmit}
-          className="px-8 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-red-500 hover:scale-105 transition transform shadow-lg"
-        >
-          {loading ? "Generating..." : "✨ Generate My Interview Strategy"}
-        </button>
-      </div>
+      {/* BUTTON */}
+      <button
+        onClick={handleSubmit}
+        className="mt-8 px-8 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-red-500 hover:scale-105 transition shadow-lg"
+      >
+        {loading ? "Generating..." : "✨ Generate My Interview Strategy"}
+      </button>
+
     </div>
   );
 }
