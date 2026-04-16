@@ -31,16 +31,16 @@ export const generateInterviewReportController = async (req, res) => {
       jobDescription
     });
 
-const titleMatch = jobDescription.match(/Job Title:\s*(.*)/i);
-const title = titleMatch ? titleMatch[1] : "Untitled Role";
+const titleMatch = jobDescription?.match(/Job Title:\s*(.*)/i);
+const fallbackTitle = titleMatch ? titleMatch[1] : "Untitled Role";
 
 const interviewReport = await interviewReportModel.create({
   user: req.user?._id,
-  title,
   resume: resumeText,
   selfDescription,
   jobDescription,
-  ...interviewReportByAi
+  ...interviewReportByAi,
+  title: interviewReportByAi.title || fallbackTitle
 });
 
     res.status(201).json({
