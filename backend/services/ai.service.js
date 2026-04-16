@@ -7,18 +7,7 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_GENAI_API_KEY
 });
 
-function safeParseArray(value, fallback) {
-  if (!value) return fallback;
 
-  if (Array.isArray(value)) return value;
-
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : fallback;
-  } catch {
-    return fallback;
-  }
-}
 const interviewReportSchema = z.object({
   matchScore: z.number(),
   technicalQuestions: z.array(
@@ -143,35 +132,14 @@ console.error("Gemini Error:", err);
     const parsed = JSON.parse(rawText);
 
     return {
-  matchScore:
-    typeof parsed.matchScore === "number" &&
-    parsed.matchScore >= 0 &&
-    parsed.matchScore <= 100
-      ? parsed.matchScore
-      : fallbackData.matchScore,
+      matchScore: parsed.matchScore ?? 60,
+      title: parsed.title || "Software Engineer",
+      technicalQuestions: parsed.technicalQuestions || [],
+      behavioralQuestions: parsed.behavioralQuestions || [],
+      skillGaps: parsed.skillGaps || [],
+      preparationPlan: parsed.preparationPlan || []
+    };
 
-  title: parsed.title || fallbackData.title,
-
-  technicalQuestions: safeParseArray(
-    parsed.technicalQuestions,
-    fallbackData.technicalQuestions
-  ),
-
-  behavioralQuestions: safeParseArray(
-    parsed.behavioralQuestions,
-    fallbackData.behavioralQuestions
-  ),
-
-  skillGaps: safeParseArray(
-    parsed.skillGaps,
-    fallbackData.skillGaps
-  ),
-
-  preparationPlan: safeParseArray(
-    parsed.preparationPlan,
-    fallbackData.preparationPlan
-  )
-};
   } catch {
     return fallbackData;
   }
