@@ -20,7 +20,7 @@ export default function InterviewReport() {
       <div className="bg-green-600/20 border border-green-500 p-6 rounded-xl text-center mb-6">
         <h2 className="text-xl">Match Score</h2>
         <p className="text-4xl font-bold text-green-400">
-          {data.matchScore}%
+{data.matchScore ?? 0}%
         </p>
       </div>
 
