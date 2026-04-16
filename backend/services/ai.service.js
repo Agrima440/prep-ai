@@ -42,16 +42,19 @@ const interviewReportSchema = z.object({
 // ✅ INTERVIEW REPORT
 export async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
-  const prompt = `
+ const prompt = `
 You are an expert interviewer.
 
-Generate an interview report for:
+Generate a detailed interview report.
+
+STRICT RULES:
+- matchScore must be a number between 0 to 100
+- title must be a short job title (e.g., "Full Stack Developer")
+- Return ONLY valid JSON
+
 Resume: ${resume}
 Self Description: ${selfDescription}
-Job Description: ${jobDescription}
-
-Give structured JSON output.
-`;
+Job Description: ${jobDescription}`;
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash", // ✅ FIXED MODEL
@@ -62,8 +65,16 @@ Give structured JSON output.
     }
   });
 
-  return JSON.parse(response.text);
-}
+const parsed = JSON.parse(response.text);
+
+return {
+  matchScore: parsed.matchScore ?? 0, // ✅ fallback
+  title: parsed.title || "Untitled Role",
+  technicalQuestions: parsed.technicalQuestions || [],
+  behavioralQuestions: parsed.behavioralQuestions || [],
+  skillGaps: parsed.skillGaps || [],
+  preparationPlan: parsed.preparationPlan || []
+};}
 
 
 // ✅ PDF GENERATOR
