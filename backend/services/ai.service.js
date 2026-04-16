@@ -120,7 +120,14 @@ Job Description: ${jobDescription}
     });
   } catch (err) {
 console.error("Gemini Error:", err);
-    return fallbackData;
+    return {
+      matchScore: 60,
+      title: "Software Engineer",
+      technicalQuestions: [],
+      behavioralQuestions: [],
+      skillGaps: [],
+      preparationPlan: []
+    };
   }
 
   try {
@@ -141,7 +148,14 @@ console.error("Gemini Error:", err);
     };
 
   } catch {
-    return fallbackData;
+    return {
+      matchScore: 60,
+      title: "Software Engineer",
+      technicalQuestions: [],
+      behavioralQuestions: [],
+      skillGaps: [],
+      preparationPlan: []
+    };
   }
 }
 
