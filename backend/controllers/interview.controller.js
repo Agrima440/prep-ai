@@ -8,23 +8,32 @@ import interviewReportModel from "../models/interviewReport.model.js";
 
 export const generateInterviewReportController = async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: "Resume file required" });
+    console.log("USER:", req.user);
+
+    if (!req.file && !req.body.selfDescription) {
+      return res.status(400).json({
+        message: "Resume or Self Description required"
+      });
     }
 
-    const pdfData = await pdfParse(req.file.buffer);
+    let resumeText = "";
+
+    if (req.file) {
+      const pdfData = await pdfParse(req.file.buffer);
+      resumeText = pdfData.text;
+    }
 
     const { jobDescription, selfDescription } = req.body;
 
     const interviewReportByAi = await generateInterviewReport({
-      resume: pdfData.text,
+      resume: resumeText,
       selfDescription,
       jobDescription
     });
 
     const interviewReport = await interviewReportModel.create({
-      user: req.user._id,
-      resume: pdfData.text,
+      user: req.user?._id, // safe
+      resume: resumeText,
       selfDescription,
       jobDescription,
       ...interviewReportByAi
