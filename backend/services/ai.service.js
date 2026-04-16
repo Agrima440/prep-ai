@@ -7,6 +7,7 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_GENAI_API_KEY
 });
 
+
 const interviewReportSchema = z.object({
   matchScore: z.number(),
   technicalQuestions: z.array(
@@ -39,18 +40,68 @@ const interviewReportSchema = z.object({
   title: z.string()
 });
 
+
 // ✅ INTERVIEW REPORT
 export async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
+  const fallbackData = {
+  matchScore: 60,
+  title: "Software Engineer",
+  technicalQuestions: [
+    {
+      question: "Explain closures in JavaScript",
+      intention: "Check JS fundamentals",
+      answer: "Closures allow functions to access outer scope variables"
+    }
+  ],
+  behavioralQuestions: [
+    {
+      question: "Tell me about yourself",
+      intention: "Communication",
+      answer: "Briefly explain your experience and skills"
+    }
+  ],
+  skillGaps: [
+    { skill: "System Design", severity: "medium" }
+  ],
+  preparationPlan: [
+    {
+      day: 1,
+      focus: "JavaScript",
+      tasks: ["Closures", "Promises"]
+    }
+  ]
+};
 const prompt = `
 You are an expert interviewer.
 
-Generate a detailed interview report.
+Generate a COMPLETE interview report in JSON.
 
 STRICT RULES:
-- matchScore must be a number between 0 to 100
-- title must be a short job title (e.g., "Full Stack Developer")
-- Return ONLY valid JSON
+- matchScore must be between 0-100
+- title must be short (e.g., "Full Stack Developer")
+- MUST return at least:
+  - 3 technicalQuestions
+  - 2 behavioralQuestions
+  - 3 skillGaps
+  - 5 preparationPlan days
+
+FORMAT EXACTLY:
+
+{
+  "matchScore": number,
+  "title": string,
+  "technicalQuestions": [
+    {
+      "question": "...",
+      "intention": "...",
+      "answer": "..."
+    }
+  ],
+  "behavioralQuestions": [...],
+  "skillGaps": [...],
+  "preparationPlan": [...]
+}
 
 Resume: ${resume}
 Self Description: ${selfDescription}
@@ -69,14 +120,7 @@ Job Description: ${jobDescription}
     });
   } catch (err) {
 console.error("Gemini Error:", err);
-    return {
-      matchScore: 60,
-      title: "Software Engineer",
-      technicalQuestions: [],
-      behavioralQuestions: [],
-      skillGaps: [],
-      preparationPlan: []
-    };
+    return fallbackData;
   }
 
   try {
@@ -88,7 +132,12 @@ console.error("Gemini Error:", err);
     const parsed = JSON.parse(rawText);
 
     return {
-      matchScore: parsed.matchScore ?? 60,
+      matchScore: parsed.matchScore ?? 60,matchScore:
+  typeof parsed.matchScore === "number" &&
+  parsed.matchScore >= 0 &&
+  parsed.matchScore <= 100
+    ? parsed.matchScore
+    : fallbackData.matchScore,
       title: parsed.title || "Software Engineer",
       technicalQuestions: parsed.technicalQuestions || [],
       behavioralQuestions: parsed.behavioralQuestions || [],
@@ -97,14 +146,7 @@ console.error("Gemini Error:", err);
     };
 
   } catch {
-    return {
-      matchScore: 60,
-      title: "Software Engineer",
-      technicalQuestions: [],
-      behavioralQuestions: [],
-      skillGaps: [],
-      preparationPlan: []
-    };
+    return fallbackData;
   }
 }
 
