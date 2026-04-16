@@ -31,13 +31,17 @@ export const generateInterviewReportController = async (req, res) => {
       jobDescription
     });
 
-    const interviewReport = await interviewReportModel.create({
-      user: req.user?._id, // safe
-      resume: resumeText,
-      selfDescription,
-      jobDescription,
-      ...interviewReportByAi
-    });
+const titleMatch = jobDescription.match(/Job Title:\s*(.*)/i);
+const title = titleMatch ? titleMatch[1] : "Untitled Role";
+
+const interviewReport = await interviewReportModel.create({
+  user: req.user?._id,
+  title,
+  resume: resumeText,
+  selfDescription,
+  jobDescription,
+  ...interviewReportByAi
+});
 
     res.status(201).json({
       message: "Interview report generated successfully",
