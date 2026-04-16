@@ -7,7 +7,6 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_GENAI_API_KEY
 });
 
-
 const interviewReportSchema = z.object({
   matchScore: z.number(),
   technicalQuestions: z.array(
@@ -40,68 +39,18 @@ const interviewReportSchema = z.object({
   title: z.string()
 });
 
-
 // ✅ INTERVIEW REPORT
 export async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
-  const fallbackData = {
-  matchScore: 60,
-  title: "Software Engineer",
-  technicalQuestions: [
-    {
-      question: "Explain closures in JavaScript",
-      intention: "Check JS fundamentals",
-      answer: "Closures allow functions to access outer scope variables"
-    }
-  ],
-  behavioralQuestions: [
-    {
-      question: "Tell me about yourself",
-      intention: "Communication",
-      answer: "Briefly explain your experience and skills"
-    }
-  ],
-  skillGaps: [
-    { skill: "System Design", severity: "medium" }
-  ],
-  preparationPlan: [
-    {
-      day: 1,
-      focus: "JavaScript",
-      tasks: ["Closures", "Promises"]
-    }
-  ]
-};
 const prompt = `
 You are an expert interviewer.
 
-Generate a COMPLETE interview report in JSON.
+Generate a detailed interview report.
 
 STRICT RULES:
-- matchScore must be between 0-100
-- title must be short (e.g., "Full Stack Developer")
-- MUST return at least:
-  - 3 technicalQuestions
-  - 2 behavioralQuestions
-  - 3 skillGaps
-  - 5 preparationPlan days
-
-FORMAT EXACTLY:
-
-{
-  "matchScore": number,
-  "title": string,
-  "technicalQuestions": [
-    {
-      "question": "...",
-      "intention": "...",
-      "answer": "..."
-    }
-  ],
-  "behavioralQuestions": [...],
-  "skillGaps": [...],
-  "preparationPlan": [...]
-}
+- matchScore must be a number between 0 to 100
+- title must be a short job title (e.g., "Full Stack Developer")
+- Return ONLY valid JSON
 
 Resume: ${resume}
 Self Description: ${selfDescription}
