@@ -110,7 +110,7 @@ Job Description: ${jobDescription}
   try {
     response = await callGemini(() =>
       ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
           responseMimeType: "application/json",
@@ -235,7 +235,7 @@ export async function generateResumePdf({ resume, selfDescription, jobDescriptio
   try {
     const response = await callGemini(() =>
       ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-3-flash-preview",
         contents: `Create resume HTML`,
         config: {
           responseMimeType: "application/json",
