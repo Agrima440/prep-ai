@@ -43,39 +43,31 @@ STRICT RULES:
 - matchScore must be between 0-100
 - title must be short (e.g., "Full Stack Developer")
 
-CRITICAL:
+IMPORTANT:
+- MUST return valid JSON
 - DO NOT return empty arrays
-- MUST include:
-  - 3 technicalQuestions
-  - 2 behavioralQuestions
-  - 3 skillGaps
-  - 5 preparationPlan days
+- DO NOT return strings instead of objects
 
-FORMAT STRICTLY:
+MINIMUM REQUIREMENTS:
+- At least 3 technicalQuestions
+- At least 2 behavioralQuestions
+- At least 3 skillGaps
+- At least 7 preparationPlan days
+
+FORMAT:
 
 {
   "matchScore": number,
   "title": string,
   "technicalQuestions": [
-    {
-      "question": string,
-      "intention": string,
-      "answer": string
-    }
+    { "question": string, "intention": string, "answer": string }
   ],
   "behavioralQuestions": [...],
   "skillGaps": [
-    {
-      "skill": string,
-      "severity": "low" | "medium" | "high"
-    }
+    { "skill": string, "severity": "low" | "medium" | "high" }
   ],
   "preparationPlan": [
-    {
-      "day": number,
-      "focus": string,
-      "tasks": string[]
-    }
+    { "day": number, "focus": string, "tasks": string[] }
   ]
 }
 
