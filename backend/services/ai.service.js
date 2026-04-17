@@ -136,25 +136,40 @@ Job Description: ${jobDescription}
       matchScore: parsed.matchScore ?? 60,
       title: parsed.title || "Software Engineer",
 
-      technicalQuestions: ensureMin(
-        fixArray(parsed.technicalQuestions),
-        3,
-        {
-          question: "Explain closures in JavaScript",
-          intention: "Check JS fundamentals",
-          answer: "Closures allow access to outer scope variables"
-        }
-      ),
+     technicalQuestions: fixArray(parsed.technicalQuestions).length >= 3
+  ? fixArray(parsed.technicalQuestions)
+  : [
+      {
+        question: "Explain closures in JavaScript",
+        intention: "Check JS fundamentals",
+        answer: "Closures allow access to outer scope variables"
+      },
+      {
+        question: "What is event loop?",
+        intention: "Async understanding",
+        answer: "Handles async operations in JS"
+      },
+      {
+        question: "Difference between var, let, const?",
+        intention: "JS basics",
+        answer: "Scope and hoisting differences"
+      }
+    ],
 
-      behavioralQuestions: ensureMin(
-        fixArray(parsed.behavioralQuestions),
-        2,
-        {
-          question: "Tell me about yourself",
-          intention: "Communication",
-          answer: "Explain your experience"
-        }
-      ),
+     behavioralQuestions: fixArray(parsed.behavioralQuestions).length >= 2
+  ? fixArray(parsed.behavioralQuestions)
+  : [
+      {
+        question: "Tell me about yourself",
+        intention: "Communication",
+        answer: "Explain your experience"
+      },
+      {
+        question: "Describe a challenge you faced",
+        intention: "Problem solving",
+        answer: "Explain situation and solution"
+      }
+    ],
 
       skillGaps: ensureMin(
         fixArray(parsed.skillGaps),
@@ -162,15 +177,17 @@ Job Description: ${jobDescription}
         { skill: "System Design", severity: "medium" }
       ),
 
-      preparationPlan: ensureMin(
-        fixArray(parsed.preparationPlan),
-        7,
-        {
-          day: 1,
-          focus: "JavaScript",
-          tasks: ["Closures", "Promises"]
-        }
-      )
+     preparationPlan: fixArray(parsed.preparationPlan).length >= 7
+  ? fixArray(parsed.preparationPlan)
+  : [
+      { day: 1, focus: "JavaScript", tasks: ["Closures", "Promises"] },
+      { day: 2, focus: "React", tasks: ["Hooks", "State"] },
+      { day: 3, focus: "Node.js", tasks: ["API", "Middleware"] },
+      { day: 4, focus: "MongoDB", tasks: ["Aggregation", "Indexing"] },
+      { day: 5, focus: "System Design", tasks: ["Basics", "Scaling"] },
+      { day: 6, focus: "DevOps", tasks: ["Docker", "CI/CD"] },
+      { day: 7, focus: "Revision", tasks: ["Mock Interview"] }
+    ],
     };
 
   } catch (err) {
