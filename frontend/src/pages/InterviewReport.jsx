@@ -3,7 +3,7 @@ import { useState } from "react";
 
 export default function InterviewReport() {
   const location = useLocation();
-  const [tab, setTab] = useState("roadmap");
+  const [tab, setTab] = useState("technical");
 
   const data =
     location.state ||
@@ -15,15 +15,15 @@ export default function InterviewReport() {
     <div className="min-h-screen bg-[#0B0F19] text-white flex">
 
       {/* LEFT */}
-      <div className="w-64 bg-[#0F172A] p-6 border-r border-gray-800">
-        <h2 className="text-gray-500 text-sm mb-6">SECTIONS</h2>
+      <div className="w-64 bg-[#0F172A] p-5 border-r border-gray-800">
+        <h2 className="text-gray-400 mb-4">SECTIONS</h2>
 
         {["technical", "behavioral", "roadmap"].map((item) => (
           <button
             key={item}
             onClick={() => setTab(item)}
-            className={`block w-full text-left px-4 py-2 rounded-lg mb-3
-              ${tab === item ? "bg-pink-600 text-white" : "text-gray-400 hover:bg-gray-800"}`}
+            className={`block w-full px-3 py-2 mb-2 rounded-lg 
+              ${tab === item ? "bg-pink-600" : "hover:bg-gray-700"}`}
           >
             {item.toUpperCase()}
           </button>
@@ -31,88 +31,65 @@ export default function InterviewReport() {
       </div>
 
       {/* CENTER */}
-      <div className="flex-1 p-8">
-
-        {tab === "roadmap" && (
-          <>
-            <h1 className="text-2xl font-bold mb-6">
-              Preparation Road Map
-            </h1>
-
-            <div className="space-y-10">
-              {data.preparationPlan.map((day) => (
-                <div key={day.day} className="relative pl-8 border-l-2 border-pink-500">
-
-                  <span className="absolute -left-2 top-2 w-4 h-4 bg-pink-500 rounded-full"></span>
-
-                  <h3 className="text-lg font-semibold text-white">
-                    Day {day.day}: {day.focus}
-                  </h3>
-
-                  <ul className="text-gray-400 mt-2 space-y-1">
-                    {day.tasks.map((task, i) => (
-                      <li key={i}>• {task}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-
-        {tab === "technical" && (
-          <div className="space-y-5">
-            {data.technicalQuestions.map((q, i) => (
-              <div key={i} className="bg-[#111827] p-5 rounded-xl border border-gray-700">
-                <p className="text-pink-400 font-semibold">{q.question}</p>
-                <p className="text-gray-400 mt-2">{q.answer}</p>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === "behavioral" && (
-          <div className="space-y-5">
-            {data.behavioralQuestions.map((q, i) => (
-              <div key={i} className="bg-[#111827] p-5 rounded-xl border border-gray-700">
-                <p className="text-blue-400 font-semibold">{q.question}</p>
-                <p className="text-gray-400 mt-2">{q.answer}</p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* RIGHT PANEL */}
-      <div className="w-72 bg-[#0F172A] p-6 border-l border-gray-800">
+      <div className="flex-1 p-6">
 
         {/* SCORE */}
-        <div className="text-center mb-8">
-          <div className="w-32 h-32 mx-auto rounded-full border-4 border-green-500 flex items-center justify-center text-3xl font-bold text-green-400">
-            {data.matchScore}%
-          </div>
-          <p className="text-green-400 mt-2 text-sm">
-            Strong match for this role
-          </p>
+        <div className="bg-gradient-to-r from-green-900/40 to-green-600/20 border border-green-500 p-6 rounded-xl text-center mb-6 shadow-lg">
+          <h2>Match Score</h2>
+          <p className="text-4xl text-green-400">{data.matchScore}%</p>
         </div>
 
-        {/* SKILL GAPS */}
-        <h3 className="text-gray-400 mb-4">SKILL GAPS</h3>
+        {/* CONTENT */}
+        {tab === "technical" &&
+          data.technicalQuestions.map((q, i) => (
+            <div key={i} className="bg-[#111827] p-4 mb-4 rounded-lg border border-gray-700">
+              <p className="text-pink-400 font-semibold">Q{i + 1}. {q.question}</p>
+              <p className="text-gray-400 mt-2">{q.answer}</p>
+            </div>
+          ))}
 
-        <div className="space-y-3">
+        {tab === "behavioral" &&
+          data.behavioralQuestions.map((q, i) => (
+            <div key={i} className="bg-[#111827] p-4 mb-4 rounded-lg border border-gray-700">
+              <p className="text-blue-400 font-semibold">Q{i + 1}. {q.question}</p>
+              <p className="text-gray-400 mt-2">{q.answer}</p>
+            </div>
+          ))}
+
+        {tab === "roadmap" &&
+          data.preparationPlan.map((day) => (
+            <div key={day.day} className="border-l-2 border-pink-500 pl-4 mb-4">
+              <h3 className="text-pink-400 font-bold">
+                Day {day.day}: {day.focus}
+              </h3>
+              <ul className="ml-5 list-disc text-gray-400">
+                {day.tasks.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+      </div>
+
+      {/* RIGHT */}
+      <div className="w-72 bg-[#0F172A] p-5 border-l border-gray-800">
+        <h2 className="mb-4">Skill Gaps</h2>
+
+        <div className="flex flex-wrap gap-2">
           {data.skillGaps.map((gap, i) => (
-            <div
+            <span
               key={i}
-              className={`px-3 py-2 rounded-lg text-sm
-                ${gap.severity === "high" ? "bg-red-500/20 text-red-400" :
-                  gap.severity === "medium" ? "bg-yellow-500/20 text-yellow-400" :
-                  "bg-green-500/20 text-green-400"}`}
+              className={`px-3 py-1 rounded-full text-sm
+              ${gap.severity === "high" ? "bg-red-500/20 text-red-400" :
+                gap.severity === "medium" ? "bg-yellow-500/20 text-yellow-400" :
+                "bg-green-500/20 text-green-400"}`}
             >
               {gap.skill}
-            </div>
+            </span>
           ))}
         </div>
       </div>
+
     </div>
   );
 }
