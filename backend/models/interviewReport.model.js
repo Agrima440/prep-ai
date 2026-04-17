@@ -25,7 +25,7 @@ const technicalQuestionsSchema = new Schema({
     type: String,
     required: [true, "Question is required"]
   },
-  intenton: {   // ⚠️ typo: should be "intention"
+  intention: {   // ⚠️ typo: should be "intention"
     type: String,
     required: [true, "Intention is required"]
   },
@@ -42,7 +42,7 @@ const behavioralQuestionsSchema = new Schema({
     type: String,
     required: [true, "Question is required"]
   },
-  intenton: {
+  intention: {
     type: String,
     required: [true, "Intention is required"]
   },
