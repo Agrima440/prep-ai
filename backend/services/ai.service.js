@@ -34,10 +34,54 @@ const interviewReportSchema = z.object({
 // ✅ INTERVIEW REPORT
 export async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
-const prompt = `Generate an interview report for a candidate with the following details:
-                        Resume: ${resume}
-                        Self Description: ${selfDescription}
-                        Job Description: ${jobDescription}
+const prompt = `
+You are an expert interviewer.
+
+Generate a COMPLETE interview report.
+
+STRICT RULES:
+- matchScore must be between 0-100
+- title must be short (e.g., "Full Stack Developer")
+
+CRITICAL:
+- DO NOT return empty arrays
+- MUST include:
+  - 3 technicalQuestions
+  - 2 behavioralQuestions
+  - 3 skillGaps
+  - 5 preparationPlan days
+
+FORMAT STRICTLY:
+
+{
+  "matchScore": number,
+  "title": string,
+  "technicalQuestions": [
+    {
+      "question": string,
+      "intention": string,
+      "answer": string
+    }
+  ],
+  "behavioralQuestions": [...],
+  "skillGaps": [
+    {
+      "skill": string,
+      "severity": "low" | "medium" | "high"
+    }
+  ],
+  "preparationPlan": [
+    {
+      "day": number,
+      "focus": string,
+      "tasks": string[]
+    }
+  ]
+}
+
+Resume: ${resume}
+Self Description: ${selfDescription}
+Job Description: ${jobDescription}
 `;
   let response;
 
