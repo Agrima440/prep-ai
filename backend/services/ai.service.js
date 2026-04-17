@@ -136,7 +136,7 @@ Job Description: ${jobDescription}
       matchScore: parsed.matchScore ?? 60,
       title: parsed.title || "Software Engineer",
 
-     technicalQuestions: fixArray(parsed.technicalQuestions).length >= 3
+   technicalQuestions: fixArray(parsed.technicalQuestions).length > 0
   ? fixArray(parsed.technicalQuestions)
   : [
       {
@@ -156,7 +156,7 @@ Job Description: ${jobDescription}
       }
     ],
 
-     behavioralQuestions: fixArray(parsed.behavioralQuestions).length >= 2
+   behavioralQuestions: fixArray(parsed.behavioralQuestions).length > 0
   ? fixArray(parsed.behavioralQuestions)
   : [
       {
@@ -171,13 +171,15 @@ Job Description: ${jobDescription}
       }
     ],
 
-      skillGaps: ensureMin(
-        fixArray(parsed.skillGaps),
-        3,
-        { skill: "System Design", severity: "medium" }
-      ),
+    skillGaps: fixArray(parsed.skillGaps).length > 0
+  ? fixArray(parsed.skillGaps)
+  : [
+      { skill: "System Design", severity: "medium" },
+      { skill: "CI/CD", severity: "medium" },
+      { skill: "Docker", severity: "low" }
+    ],
 
-     preparationPlan: fixArray(parsed.preparationPlan).length >= 7
+ preparationPlan: fixArray(parsed.preparationPlan).length > 0
   ? fixArray(parsed.preparationPlan)
   : [
       { day: 1, focus: "JavaScript", tasks: ["Closures", "Promises"] },
