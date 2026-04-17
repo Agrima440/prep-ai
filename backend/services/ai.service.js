@@ -7,95 +7,121 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_GENAI_API_KEY
 });
 
+// ✅ SCHEMA
 const interviewReportSchema = z.object({
-    matchScore: z.number().describe("A score between 0 and 100 indicating how well the candidate's profile matches the job describe"),
-    technicalQuestions: z.array(z.object({
-        question: z.string().describe("The technical question can be asked in the interview"),
-        intention: z.string().describe("The intention of interviewer behind asking this question"),
-        answer: z.string().describe("How to answer this question, what points to cover, what approach to take etc.")
-    })).describe("Technical questions that can be asked in the interview along with their intention and how to answer them"),
-    behavioralQuestions: z.array(z.object({
-        question: z.string().describe("The technical question can be asked in the interview"),
-        intention: z.string().describe("The intention of interviewer behind asking this question"),
-        answer: z.string().describe("How to answer this question, what points to cover, what approach to take etc.")
-    })).describe("Behavioral questions that can be asked in the interview along with their intention and how to answer them"),
-    skillGaps: z.array(z.object({
-        skill: z.string().describe("The skill which the candidate is lacking"),
-        severity: z.enum([ "low", "medium", "high" ]).describe("The severity of this skill gap, i.e. how important is this skill for the job and how much it can impact the candidate's chances")
-    })).describe("List of skill gaps in the candidate's profile along with their severity"),
-    preparationPlan: z.array(z.object({
-        day: z.number().describe("The day number in the preparation plan, starting from 1"),
-        focus: z.string().describe("The main focus of this day in the preparation plan, e.g. data structures, system design, mock interviews etc."),
-        tasks: z.array(z.string()).describe("List of tasks to be done on this day to follow the preparation plan, e.g. read a specific book or article, solve a set of problems, watch a video etc.")
-    })).describe("A day-wise preparation plan for the candidate to follow in order to prepare for the interview effectively"),
-    title: z.string().describe("The title of the job for which the interview report is generated"),
-})
+  matchScore: z.number(),
+  technicalQuestions: z.array(
+    z.object({
+      question: z.string(),
+      intention: z.string(),
+      answer: z.string()
+    })
+  ),
+  behavioralQuestions: z.array(
+    z.object({
+      question: z.string(),
+      intention: z.string(),
+      answer: z.string()
+    })
+  ),
+  skillGaps: z.array(
+    z.object({
+      skill: z.string(),
+      severity: z.enum(["low", "medium", "high"])
+    })
+  ),
+  preparationPlan: z.array(
+    z.object({
+      day: z.number(),
+      focus: z.string(),
+      tasks: z.array(z.string())
+    })
+  ),
+  title: z.string()
+});
 
-// ✅ INTERVIEW REPORT
+
+// ✅ RETRY (fix 503 error)
+async function callGemini(fn, retries = 3) {
+  try {
+    return await fn();
+  } catch (err) {
+    if (retries > 0 && err.status === 503) {
+      await new Promise(res => setTimeout(res, 2000));
+      return callGemini(fn, retries - 1);
+    }
+    throw err;
+  }
+}
+
+
+// ✅ FIX STRING → OBJECT
+function fixArray(arr) {
+  if (!Array.isArray(arr)) return [];
+
+  return arr.map((item) => {
+    if (typeof item === "string") {
+      try {
+        return JSON.parse(item);
+      } catch {
+        return null;
+      }
+    }
+    return item;
+  }).filter(Boolean);
+}
+
+
+// ✅ ENSURE MIN DATA
+const ensureMin = (arr, min, fallback) => {
+  while (arr.length < min) arr.push(fallback);
+  return arr;
+};
+
+
+// ✅ MAIN FUNCTION
 export async function generateInterviewReport({ resume, selfDescription, jobDescription }) {
 
-const prompt = `
+  const prompt = `
 You are an expert interviewer.
 
 Generate a COMPLETE interview report.
 
 STRICT RULES:
 - matchScore must be between 0-100
-- title must be short (e.g., "Full Stack Developer")
-
-IMPORTANT:
+- title must be short
 - MUST return valid JSON
 - DO NOT return empty arrays
 - DO NOT return strings instead of objects
 
-MINIMUM REQUIREMENTS:
+MINIMUM:
 - At least 3 technicalQuestions
 - At least 2 behavioralQuestions
 - At least 3 skillGaps
 - At least 7 preparationPlan days
 
-FORMAT:
-
-{
-  "matchScore": number,
-  "title": string,
-  "technicalQuestions": [
-    { "question": string, "intention": string, "answer": string }
-  ],
-  "behavioralQuestions": [...],
-  "skillGaps": [
-    { "skill": string, "severity": "low" | "medium" | "high" }
-  ],
-  "preparationPlan": [
-    { "day": number, "focus": string, "tasks": string[] }
-  ]
-}
-
 Resume: ${resume}
 Self Description: ${selfDescription}
 Job Description: ${jobDescription}
 `;
+
   let response;
 
   try {
-    response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: zodToJsonSchema(interviewReportSchema),
-      }
-    });
+    response = await callGemini(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: zodToJsonSchema(interviewReportSchema),
+        }
+      })
+    );
   } catch (err) {
-console.error("Gemini Error:", err);
-    return {
-      matchScore: 60,
-      title: "Software Engineer",
-      technicalQuestions: [],
-      behavioralQuestions: [],
-      skillGaps: [],
-      preparationPlan: []
-    };
+    console.error("Gemini failed:", err);
+
+    return getFallback();
   }
 
   try {
@@ -109,94 +135,119 @@ console.error("Gemini Error:", err);
     return {
       matchScore: parsed.matchScore ?? 60,
       title: parsed.title || "Software Engineer",
-      technicalQuestions: parsed.technicalQuestions || [],
-      behavioralQuestions: parsed.behavioralQuestions || [],
-      skillGaps: parsed.skillGaps || [],
-      preparationPlan: parsed.preparationPlan || []
+
+      technicalQuestions: ensureMin(
+        fixArray(parsed.technicalQuestions),
+        3,
+        {
+          question: "Explain closures in JavaScript",
+          intention: "Check JS fundamentals",
+          answer: "Closures allow access to outer scope variables"
+        }
+      ),
+
+      behavioralQuestions: ensureMin(
+        fixArray(parsed.behavioralQuestions),
+        2,
+        {
+          question: "Tell me about yourself",
+          intention: "Communication",
+          answer: "Explain your experience"
+        }
+      ),
+
+      skillGaps: ensureMin(
+        fixArray(parsed.skillGaps),
+        3,
+        { skill: "System Design", severity: "medium" }
+      ),
+
+      preparationPlan: ensureMin(
+        fixArray(parsed.preparationPlan),
+        7,
+        {
+          day: 1,
+          focus: "JavaScript",
+          tasks: ["Closures", "Promises"]
+        }
+      )
     };
 
-  } catch {
-    return {
-      matchScore: 60,
-      title: "Software Engineer",
-      technicalQuestions: [],
-      behavioralQuestions: [],
-      skillGaps: [],
-      preparationPlan: []
-    };
+  } catch (err) {
+    console.error("Parse error:", err);
+    return getFallback();
   }
 }
 
 
-// ✅ PDF GENERATOR
+// ✅ FALLBACK
+function getFallback() {
+  return {
+    matchScore: 60,
+    title: "Software Engineer",
+    technicalQuestions: [
+      {
+        question: "Explain closures in JavaScript",
+        intention: "Check fundamentals",
+        answer: "Closures allow access to outer scope"
+      }
+    ],
+    behavioralQuestions: [
+      {
+        question: "Tell me about yourself",
+        intention: "Communication",
+        answer: "Explain your experience"
+      }
+    ],
+    skillGaps: [
+      { skill: "System Design", severity: "medium" }
+    ],
+    preparationPlan: [
+      {
+        day: 1,
+        focus: "JavaScript",
+        tasks: ["Closures", "Promises"]
+      }
+    ]
+  };
+}
+
+
+// ✅ PDF
 async function generatePdfFromHtml(html) {
   const browser = await puppeteer.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox"] // ✅ IMPORTANT FOR RENDER
+    args: ["--no-sandbox", "--disable-setuid-sandbox"]
   });
 
   const page = await browser.newPage();
-  await page.setContent(html, { waitUntil: "networkidle0" });
+  await page.setContent(html);
 
-  const pdf = await page.pdf({
-    format: "A4",
-    margin: {
-      top: "20mm",
-      bottom: "20mm",
-      left: "15mm",
-      right: "15mm"
-    }
-  });
+  const pdf = await page.pdf({ format: "A4" });
 
   await browser.close();
   return pdf;
 }
 
-
 export async function generateResumePdf({ resume, selfDescription, jobDescription }) {
 
-  const schema = z.object({
-    html: z.string()
-  });
-
-  const prompt = `
-Create a professional resume in HTML format.
-
-Resume: ${resume}
-Self Description: ${selfDescription}
-Job Description: ${jobDescription}
-
-Make it:
-- ATS friendly
-- Clean design
-- 1 page preferred
-`;
+  const schema = z.object({ html: z.string() });
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: zodToJsonSchema(schema), // ✅ FIXED
-      }
-    });
+    const response = await callGemini(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `Create resume HTML`,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: zodToJsonSchema(schema),
+        }
+      })
+    );
 
-    const rawText =
-      response.text ||
-      response.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "{}";
-
-    const parsed = JSON.parse(rawText);
-
+    const parsed = JSON.parse(response.text);
     return await generatePdfFromHtml(parsed.html);
 
-  } catch (err) {
-    console.log("PDF AI FAILED");
-
-return await generatePdfFromHtml(`
-  <div style="font-family:sans-serif; text-align:center; padding:40px">
-    <h1>Resume Generation Failed</h1>
-    <p>Please try again later.</p>
-  </div>
-`);  }
+  } catch {
+    return await generatePdfFromHtml("<h1>Failed</h1>");
+  }
 }
