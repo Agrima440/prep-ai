@@ -119,7 +119,7 @@ export const getAllInterviewReportsController = async (req, res) => {
     }
 
     const interviewReports = await interviewReportModel
-      .find({ user: req.user.id })
+      .find({ user: req.user?._id })
       .sort({ createdAt: -1 })
       .select("-resume -selfDescription -jobDescription -__v");
 
