@@ -134,28 +134,48 @@ Job Description: ${jobDescription}
 
     console.log("AI RAW:", rawText); // 🔥 debug
 
-    const parsed = JSON.parse(rawText);
+const cleanText = rawText
+  .replace(/```json/g, "")
+  .replace(/```/g, "")
+  .trim();
 
-    return {
-      matchScore: parsed.matchScore || 60,
-      title: parsed.title || "Software Engineer",
-      technicalQuestions: parsed.technicalQuestions || [],
-      behavioralQuestions: parsed.behavioralQuestions || [],
-      skillGaps: parsed.skillGaps || [],
-      preparationPlan: parsed.preparationPlan || []
-    };
+let parsed;
+
+try {
+  parsed = JSON.parse(cleanText);
+} catch {
+  console.log("PARSE FAILED → USING FALLBACK");
+  return getFallback();
+}
+ return {
+  matchScore: parsed.matchScore || 60,
+  title: parsed.title || "Software Engineer",
+
+  technicalQuestions:
+    parsed.technicalQuestions?.length >= 3
+      ? parsed.technicalQuestions
+      : fallbackTech(),
+
+  behavioralQuestions:
+    parsed.behavioralQuestions?.length >= 2
+      ? parsed.behavioralQuestions
+      : fallbackBehavioral(),
+
+  skillGaps:
+    parsed.skillGaps?.length >= 3
+      ? parsed.skillGaps
+      : fallbackSkills(),
+
+  preparationPlan:
+    parsed.preparationPlan?.length >= 7
+      ? parsed.preparationPlan
+      : fallbackPlan()
+};
 
   } catch (err) {
     console.log("AI ERROR:", err);
 
-    return {
-      matchScore: 60,
-      title: "Software Engineer",
-      technicalQuestions: [],
-      behavioralQuestions: [],
-      skillGaps: [],
-      preparationPlan: []
-    };
+   return getFallback();
   }
 }
 
