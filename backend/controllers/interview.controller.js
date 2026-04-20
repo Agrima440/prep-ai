@@ -115,7 +115,7 @@ const interviewReport = await interviewReportModel.findOne({
 export const getAllInterviewReportsController = async (req, res) => {
   try {
     const interviewReports = await interviewReportModel
-      .find({ user: req.user.id })
+      .find({})
       .sort({ createdAt: -1 })
       .select("-resume -selfDescription -jobDescription -__v -technicalQuestions -behavioralQuestions -skillGaps -preparationPlan");
 
