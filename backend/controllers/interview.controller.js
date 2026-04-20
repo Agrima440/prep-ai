@@ -60,7 +60,7 @@ export const getInterviewReportByIdController = async (req, res) => {
 
     const interviewReport = await interviewReportModel.findOne({
       _id: interviewId,
-      user: req.user.id
+      user: req.user._id
     });
 
     if (!interviewReport) {
@@ -85,7 +85,7 @@ export const generateResumePdfController = async (req, res) => {
 
 const interviewReport = await interviewReportModel.findOne({
   _id: interviewId,
-  user: req.user.id
+  user: req.user._id
 });
     if (!interviewReport) {
       return res.status(404).json({
@@ -140,7 +140,7 @@ export const deleteReportController = async (req, res) => {
 
     const report = await interviewReportModel.findOneAndDelete({
       _id: interviewId,
-      user: req.user.id
+      user: req.user._id
     });
 
     if (!report) {
@@ -157,11 +157,19 @@ export const deleteReportController = async (req, res) => {
 
 export const deleteAllReportsController = async (req, res) => {
   try {
-    await interviewReportModel.deleteMany({ user: req.user.id });
+    console.log("USER:", req.user); // debug
+
+    const result = await interviewReportModel.deleteMany({
+      user: req.user._id   // ✅ FIXED
+    });
+
+    console.log("DELETED COUNT:", result.deletedCount);
 
     res.status(200).json({
-      message: "All reports deleted successfully"
+      message: "All reports deleted successfully",
+      deletedCount: result.deletedCount
     });
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
