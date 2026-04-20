@@ -22,8 +22,7 @@ export default function InterviewForm() {
       const res = await api.get("/interview");
       setReports(res.data.interviewReports || []);
     } catch (err) {
-      console.log(err);
-    }
+console.log("ERROR FETCHING REPORTS:", err.response?.data || err.message);    }
   };
 
   // ✅ GENERATE REPORT
