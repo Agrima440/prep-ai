@@ -63,8 +63,7 @@ console.log("ERROR FETCHING REPORTS:", err.response?.data || err.message);    }
   // ✅ OPEN REPORT
   const openReport = (report) => {
     localStorage.setItem("report", JSON.stringify(report));
-    navigate("/report");
-  };
+navigate("/report", { state: report });  };
 
   return (
     <div className="min-h-screen bg-[#0B0F19] text-white flex flex-col items-center p-6">
