@@ -154,3 +154,15 @@ export const deleteReportController = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+export const deleteAllReportsController = async (req, res) => {
+  try {
+    await interviewReportModel.deleteMany({ user: req.user.id });
+
+    res.status(200).json({
+      message: "All reports deleted successfully"
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
