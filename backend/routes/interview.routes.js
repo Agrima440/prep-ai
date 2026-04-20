@@ -1,6 +1,7 @@
 import express from "express";
 import { protect } from "../middlewares/auth.middleware.js";
 import {
+  deleteReportController,
   generateInterviewReportController,
   generateResumePdfController,
   getAllInterviewReportsController,
@@ -14,5 +15,5 @@ router.post("/", protect, upload.single("resume"), generateInterviewReportContro
 router.get("/report/:interviewId", protect, getInterviewReportByIdController);
 router.get("/", protect, getAllInterviewReportsController);
 router.get("/resume/pdf/:interviewId", protect, generateResumePdfController);
-
+router.delete("/:interviewId", protect, deleteReportController);
 export default router;
