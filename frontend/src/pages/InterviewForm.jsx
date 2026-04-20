@@ -20,7 +20,9 @@ export default function InterviewForm() {
   const fetchReports = async () => {
     try {
       const res = await api.get("/interview");
+      console.log("FETCHED REPORTS:", res.data.interviewReports);
       setReports(res.data.interviewReports || []);
+      console.log("REPORTS SET IN STATE:", res.data.interviewReports);
     } catch (err) {
 console.log("ERROR FETCHING REPORTS:", err.response?.data || err.message);    }
   };
