@@ -133,3 +133,24 @@ export const getAllInterviewReportsController = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+export const deleteReportController = async (req, res) => {
+  try {
+    const { interviewId } = req.params;
+
+    const report = await interviewReportModel.findOneAndDelete({
+      _id: interviewId,
+      user: req.user.id
+    });
+
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    res.status(200).json({
+      message: "Report deleted successfully"
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
