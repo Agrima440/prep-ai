@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
@@ -8,9 +8,25 @@ export default function InterviewForm() {
   const [jobDescription, setJobDescription] = useState("");
   const [selfDescription, setSelfDescription] = useState("");
   const [loading, setLoading] = useState(false);
+  const [reports, setReports] = useState([]);
 
   const navigate = useNavigate();
 
+  // ✅ FETCH ALL REPORTS
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  const fetchReports = async () => {
+    try {
+      const res = await api.get("/interview/all");
+      setReports(res.data.interviewReports || []);
+    } catch (err) {
+      console.log(err);
+    }
+  };
+
+  // ✅ GENERATE REPORT
   const handleSubmit = async () => {
     if (!jobDescription || (!file && !selfDescription)) {
       toast.error("Provide JD + Resume or Self Description");
@@ -21,21 +37,32 @@ export default function InterviewForm() {
       setLoading(true);
 
       const formData = new FormData();
-      formData.append("resume", file);
+      if (file) formData.append("resume", file);
       formData.append("jobDescription", jobDescription);
       formData.append("selfDescription", selfDescription);
 
       const res = await api.post("/interview", formData);
 
-      localStorage.setItem("report", JSON.stringify(res.data.interviewReport));
-      toast.success("Report generated 🚀");
-      navigate("/report");
+      const report = res.data.interviewReport;
 
-    } catch {
+      localStorage.setItem("report", JSON.stringify(report));
+
+      toast.success("Report generated 🚀");
+
+      await fetchReports(); // ✅ refresh recent list
+
+      navigate("/report");
+    } catch (err) {
       toast.error("Failed to generate report");
     } finally {
       setLoading(false);
     }
+  };
+
+  // ✅ OPEN REPORT
+  const openReport = (report) => {
+    localStorage.setItem("report", JSON.stringify(report));
+    navigate("/report");
   };
 
   return (
@@ -48,16 +75,16 @@ export default function InterviewForm() {
           <span className="text-pink-500">Interview Plan</span>
         </h1>
         <p className="text-gray-400 mt-3">
-          Let our AI analyze the job requirements and your profile to build a winning strategy.
+          Let AI analyze your profile and generate a winning strategy.
         </p>
       </div>
 
-      {/* MAIN CONTAINER */}
+      {/* FORM */}
       <div className="w-full max-w-5xl bg-[#111827] border border-gray-700 rounded-2xl p-6 grid md:grid-cols-2 gap-6 shadow-xl">
 
-        {/* LEFT SIDE */}
+        {/* LEFT */}
         <div className="flex flex-col">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex justify-between mb-2">
             <h2 className="font-semibold">Target Job Description</h2>
             <span className="text-xs bg-pink-600 px-2 py-1 rounded">REQUIRED</span>
           </div>
@@ -69,19 +96,19 @@ export default function InterviewForm() {
           />
         </div>
 
-        {/* RIGHT SIDE */}
+        {/* RIGHT */}
         <div className="flex flex-col gap-4">
 
-          {/* Upload */}
+          {/* UPLOAD */}
           <div>
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex justify-between mb-2">
               <h2 className="font-semibold">Upload Resume</h2>
               <span className="text-xs bg-green-600 px-2 py-1 rounded">
-                BEST RESULTS
+                BEST
               </span>
             </div>
 
-            <label className="flex flex-col items-center justify-center h-40 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-pink-500 transition">
+            <label className="flex items-center justify-center h-40 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-pink-500">
               <p className="text-gray-400 text-sm">
                 {file ? file.name : "Click to upload PDF"}
               </p>
@@ -93,19 +120,17 @@ export default function InterviewForm() {
             </label>
           </div>
 
-          {/* OR */}
           <div className="text-center text-gray-500 text-sm">OR</div>
 
-          {/* SELF DESCRIPTION */}
+          {/* SELF DESC */}
           <textarea
-            placeholder="Briefly describe your experience, skills..."
-            className="h-32 p-4 rounded-lg bg-[#0B0F19] border border-gray-700 focus:ring-2 focus:ring-pink-500 outline-none"
+            placeholder="Describe your experience..."
+            className="h-32 p-4 rounded-lg bg-[#0B0F19] border border-gray-700 focus:ring-2 focus:ring-pink-500"
             onChange={(e) => setSelfDescription(e.target.value)}
           />
 
-          {/* INFO BOX */}
           <div className="bg-blue-900/30 border border-blue-500/30 text-blue-300 text-sm p-3 rounded-lg">
-            Either a Resume or Self Description is required
+            Either Resume or Self Description is required
           </div>
         </div>
       </div>
@@ -117,6 +142,44 @@ export default function InterviewForm() {
       >
         {loading ? "Generating..." : "✨ Generate My Interview Strategy"}
       </button>
+
+      {/* RECENT REPORTS */}
+      <div className="w-full max-w-5xl mt-12">
+        <h2 className="text-2xl font-bold mb-6">
+          My Recent Interview Plans
+        </h2>
+
+        {reports.length === 0 ? (
+          <p className="text-gray-400">No reports yet</p>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-4">
+            {reports.map((r, i) => (
+              <div
+                key={i}
+                onClick={() => openReport(r)}
+                className="bg-[#111827] border border-gray-700 rounded-xl p-5 cursor-pointer hover:border-pink-500 hover:scale-[1.02] transition"
+              >
+                <h3 className="text-lg font-semibold mb-2">
+                  {r.title || "Untitled Role"}
+                </h3>
+
+                <p className="text-gray-400 text-sm">
+                  Generated on{" "}
+                  {new Date(r.createdAt).toLocaleDateString()}
+                </p>
+
+                <p className="text-pink-500 mt-2 font-medium">
+                  Match Score: {r.matchScore}%
+                </p>
+
+                <p className="text-green-400 text-xs mt-1">
+                  Strong match for this role
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
     </div>
   );
