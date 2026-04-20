@@ -12,7 +12,7 @@ const router = express.Router();
 
 router.post("/", protect, upload.single("resume"), generateInterviewReportController);
 router.get("/report/:interviewId", protect, getInterviewReportByIdController);
-router.get("/", protect, getAllInterviewReportsController);
+router.get("/", getAllInterviewReportsController);
 router.get("/resume/pdf/:interviewId", protect, generateResumePdfController);
 
 export default router;
