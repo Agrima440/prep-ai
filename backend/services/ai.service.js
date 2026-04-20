@@ -82,12 +82,12 @@ You are an expert interviewer.
 
 Generate a COMPLETE interview report.
 
-STRICT RULES:
+RULES:
 - matchScore must be between 0-100
 - title must be short
+- ALL items must be UNIQUE
 - DO NOT return empty arrays
-- DO NOT return strings instead of objects
-- ALL items must be UNIQUE (no repetition)
+- Return ONLY valid JSON
 
 MINIMUM:
 - At least 3 technicalQuestions
@@ -95,82 +95,67 @@ MINIMUM:
 - At least 3 skillGaps
 - At least 7 preparationPlan days
 
-Return ONLY valid JSON.
+FORMAT:
+
+{
+  "matchScore": number,
+  "title": string,
+  "technicalQuestions": [
+    { "question": "...", "intention": "...", "answer": "..." }
+  ],
+  "behavioralQuestions": [...],
+  "skillGaps": [
+    { "skill": "...", "severity": "low|medium|high" }
+  ],
+  "preparationPlan": [
+    { "day": number, "focus": "...", "tasks": ["..."] }
+  ]
+}
 
 Resume: ${resume}
 Self Description: ${selfDescription}
 Job Description: ${jobDescription}
 `;
 
-  let response;
-
   try {
-    response = await callGemini(() =>
-      ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: zodToJsonSchema(interviewReportSchema)
-        }
-      })
-    );
-  } catch (err) {
-    console.error("Gemini failed:", err);
-    return getFallback();
-  }
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+        // ❌ IMPORTANT: NO responseSchema
+      }
+    });
 
-  try {
     const rawText =
       response.text ||
       response.candidates?.[0]?.content?.parts?.[0]?.text ||
       "{}";
 
+    console.log("AI RAW:", rawText); // 🔥 debug
+
     const parsed = JSON.parse(rawText);
 
-    // ===== VALIDATION =====
+    return {
+      matchScore: parsed.matchScore || 60,
+      title: parsed.title || "Software Engineer",
+      technicalQuestions: parsed.technicalQuestions || [],
+      behavioralQuestions: parsed.behavioralQuestions || [],
+      skillGaps: parsed.skillGaps || [],
+      preparationPlan: parsed.preparationPlan || []
+    };
 
-    const validTech = fixArray(parsed.technicalQuestions).filter(
-      (q) => q?.question && q?.intention && q?.answer
-    );
-
-    const validBehavioral = fixArray(parsed.behavioralQuestions).filter(
-      (q) => q?.question && q?.intention && q?.answer
-    );
-
-    const validSkills = fixArray(parsed.skillGaps).filter(
-      (s) => s?.skill && ["low", "medium", "high"].includes(s?.severity)
-    );
-
-    const validPlan = fixArray(parsed.preparationPlan).filter(
-      (d) => d?.day && d?.focus && Array.isArray(d?.tasks)
-    );
+  } catch (err) {
+    console.log("AI ERROR:", err);
 
     return {
-      matchScore:
-        typeof parsed.matchScore === "number"
-          ? parsed.matchScore
-          : 60,
-
-      title: parsed.title || "Software Engineer",
-
-      technicalQuestions:
-        validTech.length >= 3 ? validTech : fallbackTech(),
-
-      behavioralQuestions:
-        validBehavioral.length >= 2
-          ? validBehavioral
-          : fallbackBehavioral(),
-
-      skillGaps:
-        validSkills.length >= 3 ? validSkills : fallbackSkills(),
-
-      preparationPlan:
-        validPlan.length >= 7 ? validPlan : fallbackPlan()
+      matchScore: 60,
+      title: "Software Engineer",
+      technicalQuestions: [],
+      behavioralQuestions: [],
+      skillGaps: [],
+      preparationPlan: []
     };
-  } catch (err) {
-    console.error("Parse error:", err);
-    return getFallback();
   }
 }
 
