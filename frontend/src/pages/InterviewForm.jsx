@@ -19,7 +19,7 @@ export default function InterviewForm() {
 
   const fetchReports = async () => {
     try {
-      const res = await api.get("/interview/all");
+      const res = await api.get("/interview");
       setReports(res.data.interviewReports || []);
     } catch (err) {
       console.log(err);
