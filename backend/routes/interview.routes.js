@@ -15,5 +15,7 @@ router.post("/", protect, upload.single("resume"), generateInterviewReportContro
 router.get("/report/:interviewId", protect, getInterviewReportByIdController);
 router.get("/", protect, getAllInterviewReportsController);
 router.get("/resume/pdf/:interviewId", protect, generateResumePdfController);
-router.delete("/:interviewId", protect, deleteReportController);
+router.delete("/all", protect, deleteAllReportsController); // ✅ FIRST
+router.delete("/:interviewId", protect, deleteReportController); // AFTER
+
 export default router;
