@@ -114,10 +114,14 @@ const interviewReport = await interviewReportModel.findOne({
 
 export const getAllInterviewReportsController = async (req, res) => {
   try {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
     const interviewReports = await interviewReportModel
-      .find({})
+      .find({ user: req.user.id })
       .sort({ createdAt: -1 })
-      .select("-resume -selfDescription -jobDescription -__v -technicalQuestions -behavioralQuestions -skillGaps -preparationPlan");
+      .select("-resume -selfDescription -jobDescription -__v");
 
     res.status(200).json({
       message: "Interview reports retrieved successfully",
@@ -125,6 +129,7 @@ export const getAllInterviewReportsController = async (req, res) => {
     });
 
   } catch (err) {
+    console.log("ERROR:", err);
     res.status(500).json({ message: err.message });
   }
 };
