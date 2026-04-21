@@ -56,7 +56,7 @@ export default function InterviewReport() {
     <div className="min-h-screen bg-[#0B0F19] text-white flex">
 
       {/* LEFT */}
-      <div className="w-64 bg-[#0F172A] p-5 border-r border-gray-800">
+      <div className="w-64 bg-[#0F172A] p-5 border-r border-gray-800 flex flex-col">
         <h2 className="text-gray-400 mb-4">SECTIONS</h2>
 
         {["technical", "behavioral", "roadmap"].map((item) => (
@@ -72,6 +72,48 @@ export default function InterviewReport() {
             {item.toUpperCase()}
           </button>
         ))}
+<div className="mt-auto pt-10">
+    <button
+    onClick={async () => {
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/interview/resume/pdf/${data._id}`,
+      {
+        method: "GET",
+        credentials: "include"
+      }
+    );
+
+    if (!res.ok) {
+      throw new Error("Failed to download PDF");
+    }
+
+    const blob = await res.blob();
+
+    if (blob.size < 1000) {
+      alert("PDF is empty. AI failed. Try again.");
+      return;
+    }
+
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "resume.pdf";
+    a.click();
+
+    window.URL.revokeObjectURL(url);
+
+  } catch (err) {
+    console.error(err);
+    alert("Something went wrong while downloading resume");
+  }
+}}
+    className="w-full bg-pink-600 hover:bg-pink-700 py-3 rounded-xl font-semibold"
+  >
+    ✨ Download Resume
+  </button>
+</div>
       </div>
 
       {/* CENTER */}
@@ -147,28 +189,7 @@ export default function InterviewReport() {
             </div>
           ))}
         </div>
-        <button
-  onClick={async () => {
-    const res = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/api/interview/resume/pdf/${data._id}`,
-      {
-        method: "GET",
-        credentials: "include"
-      }
-    );
-
-    const blob = await res.blob();
-    const url = window.URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "resume.pdf";
-    a.click();
-  }}
-  className="mt-8 w-full bg-pink-600 hover:bg-pink-700 py-3 rounded-xl font-semibold"
->
-  ✨ Download Resume
-</button>
+        
       </div>
     </div>
   );
