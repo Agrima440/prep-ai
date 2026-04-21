@@ -115,7 +115,7 @@ Job Description: ${jobDescription}
   try {
     const response = await callGemini(() =>
       ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents: prompt,
         config: {
           responseMimeType: "application/json" // ✅ VERY IMPORTANT
@@ -200,7 +200,7 @@ export async function generateResumePdf({
   try {
     const response = await callGemini(() =>
       ai.models.generateContent({
-        model: "gemini-2.5-flash",
+        model: "gemini-1.5-flash",
         contents: `Create a professional resume in HTML format only`
       })
     );
