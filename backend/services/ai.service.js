@@ -82,12 +82,12 @@ You are an expert interviewer.
 
 Generate a COMPLETE interview report.
 
-RULES:
+STRICT RULES:
 - matchScore must be between 0-100
 - title must be short
-- ALL items must be UNIQUE
 - DO NOT return empty arrays
-- Return ONLY valid JSON
+- DO NOT return strings instead of objects
+- ALL items must be UNIQUE (no repetition)
 
 MINIMUM:
 - At least 3 technicalQuestions
@@ -95,88 +95,82 @@ MINIMUM:
 - At least 3 skillGaps
 - At least 7 preparationPlan days
 
-FORMAT:
-
-{
-  "matchScore": number,
-  "title": string,
-  "technicalQuestions": [
-    { "question": "...", "intention": "...", "answer": "..." }
-  ],
-  "behavioralQuestions": [...],
-  "skillGaps": [
-    { "skill": "...", "severity": "low|medium|high" }
-  ],
-  "preparationPlan": [
-    { "day": number, "focus": "...", "tasks": ["..."] }
-  ]
-}
+Return ONLY valid JSON.
 
 Resume: ${resume}
 Self Description: ${selfDescription}
 Job Description: ${jobDescription}
 `;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json"
-        // ❌ IMPORTANT: NO responseSchema
-      }
-    });
+  let response;
 
+  try {
+    response = await callGemini(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: zodToJsonSchema(interviewReportSchema)
+        }
+      })
+    );
+  } catch (err) {
+    console.error("Gemini failed:", err);
+    return getFallback();
+  }
+
+  try {
     const rawText =
       response.text ||
       response.candidates?.[0]?.content?.parts?.[0]?.text ||
       "{}";
 
-    console.log("AI RAW:", rawText); // 🔥 debug
+    const parsed = JSON.parse(rawText);
 
-const cleanText = rawText
-  .replace(/```json/g, "")
-  .replace(/```/g, "")
-  .replace(/\n/g, "")
-  .trim();
+    // ===== VALIDATION =====
 
-let parsed;
+    const validTech = fixArray(parsed.technicalQuestions).filter(
+      (q) => q?.question && q?.intention && q?.answer
+    );
 
-try {
-  parsed = JSON.parse(cleanText);
-} catch {
-  console.log("PARSE FAILED → USING FALLBACK");
-  return getFallback();
-}
- return {
-  matchScore: parsed.matchScore || 60,
-  title: parsed.title || "Software Engineer",
+    const validBehavioral = fixArray(parsed.behavioralQuestions).filter(
+      (q) => q?.question && q?.intention && q?.answer
+    );
 
- technicalQuestions:
-  parsed.technicalQuestions?.length
-    ? parsed.technicalQuestions
-    : fallbackTech(),
+    const validSkills = fixArray(parsed.skillGaps).filter(
+      (s) => s?.skill && ["low", "medium", "high"].includes(s?.severity)
+    );
 
-behavioralQuestions:
-  parsed.behavioralQuestions?.length
-    ? parsed.behavioralQuestions 
-    : fallbackBehavioral(),
+    const validPlan = fixArray(parsed.preparationPlan).filter(
+      (d) => d?.day && d?.focus && Array.isArray(d?.tasks)
+    );
 
-skillGaps:
-  parsed.skillGaps?.length
-    ? parsed.skillGaps
-    : fallbackSkills(),
+    return {
+      matchScore:
+        typeof parsed.matchScore === "number"
+          ? parsed.matchScore
+          : 60,
 
-preparationPlan:
-  parsed.preparationPlan?.length
-    ? parsed.preparationPlan
-    : fallbackPlan(),
-};
+      title: parsed.title || "Software Engineer",
 
+      technicalQuestions:
+        validTech.length >= 3 ? validTech : fallbackTech(),
+
+      behavioralQuestions:
+        validBehavioral.length >= 2
+          ? validBehavioral
+          : fallbackBehavioral(),
+
+      skillGaps:
+        validSkills.length >= 3 ? validSkills : fallbackSkills(),
+
+      preparationPlan:
+        validPlan.length >= 7 ? validPlan : fallbackPlan()
+    };
   } catch (err) {
-    console.log("AI ERROR:", err);
-
-   return getFallback();
+    console.error("Parse error:", err);
+    return getFallback();
   }
 }
 
@@ -273,7 +267,7 @@ export async function generateResumePdf({
   try {
     const response = await callGemini(() =>
       ai.models.generateContent({
-        model: "gemini-2.0-flash",
+        model: "gemini-2.5-flash",
         contents: `Create a professional resume in HTML`,
         config: {
           responseMimeType: "application/json",
