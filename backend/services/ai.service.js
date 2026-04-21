@@ -18,10 +18,19 @@ async function callGemini(fn, retries = 3) {
   }
 }
 
-// ================= SAFE PARSER =================
-function safeParseJSON(text) {
+// ================= EXTRACT JSON (CRITICAL FIX) =================
+function extractJSON(text) {
   try {
-    return JSON.parse(text);
+    const cleaned = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    const match = cleaned.match(/\{[\s\S]*\}/);
+
+    if (!match) return null;
+
+    return JSON.parse(match[0]);
   } catch {
     return null;
   }
@@ -96,8 +105,7 @@ RULES:
 - Minimum 2 behavioral questions
 - Minimum 3 skill gaps
 - Minimum 7 days plan
-- DO NOT return empty arrays
-- RETURN ONLY JSON (no explanation)
+- RETURN ONLY JSON
 
 Resume: ${resume}
 Self Description: ${selfDescription}
@@ -108,21 +116,26 @@ Job Description: ${jobDescription}
     const response = await callGemini(() =>
       ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: prompt
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json" // ✅ VERY IMPORTANT
+        }
       })
     );
 
     const rawText =
       response.text ||
       response.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "{}";
+      "";
 
-    console.log("RAW AI RESPONSE:", rawText);
+    console.log("🔥 RAW AI RESPONSE:", rawText);
 
-    const parsed = safeParseJSON(rawText);
+    const parsed = extractJSON(rawText);
+
+    console.log("✅ PARSED:", parsed);
 
     if (!parsed) {
-      console.log("❌ JSON parse failed → using fallback");
+      console.log("❌ JSON extraction failed → fallback");
       return getFallback();
     }
 
