@@ -111,7 +111,7 @@ Job Description: ${jobDescription}
         contents: prompt,
         config: {
           responseMimeType: "application/json",
-          responseSchema: zodToJsonSchema(interviewReportSchema)
+          // responseSchema: zodToJsonSchema(interviewReportSchema)
         }
       })
     );
