@@ -137,6 +137,7 @@ Job Description: ${jobDescription}
 const cleanText = rawText
   .replace(/```json/g, "")
   .replace(/```/g, "")
+  .replace(/\n/g, "")
   .trim();
 
 let parsed;
@@ -151,25 +152,25 @@ try {
   matchScore: parsed.matchScore || 60,
   title: parsed.title || "Software Engineer",
 
-  technicalQuestions:
-    parsed.technicalQuestions?.length >= 3
-      ? parsed.technicalQuestions
-      : fallbackTech(),
+ technicalQuestions:
+  parsed.technicalQuestions?.length
+    ? parsed.technicalQuestions
+    : fallbackTech(),
 
-  behavioralQuestions:
-    parsed.behavioralQuestions?.length >= 2
-      ? parsed.behavioralQuestions
-      : fallbackBehavioral(),
+behavioralQuestions:
+  parsed.behavioralQuestions?.length
+    ? parsed.behavioralQuestions 
+    : fallbackBehavioral(),
 
-  skillGaps:
-    parsed.skillGaps?.length >= 3
-      ? parsed.skillGaps
-      : fallbackSkills(),
+skillGaps:
+  parsed.skillGaps?.length
+    ? parsed.skillGaps
+    : fallbackSkills(),
 
-  preparationPlan:
-    parsed.preparationPlan?.length >= 7
-      ? parsed.preparationPlan
-      : fallbackPlan()
+preparationPlan:
+  parsed.preparationPlan?.length
+    ? parsed.preparationPlan
+    : fallbackPlan(),
 };
 
   } catch (err) {
