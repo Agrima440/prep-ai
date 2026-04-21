@@ -247,23 +247,15 @@ export async function generateResumePdf({
   selfDescription,
   jobDescription
 }) {
-  const schema = z.object({ html: z.string() });
-
   const prompt = `
-You are a professional resume writer.
+Generate a professional ATS-friendly resume in PURE HTML.
 
-Return ONLY JSON in this format:
-{
-  "html": "<full resume HTML>"
-}
-
-Rules:
-- Valid JSON only
-- No explanation
+RULES:
+- Return ONLY HTML (no JSON, no explanation)
+- Use proper HTML structure (<html>, <head>, <body>)
+- Keep it clean and professional
+- 1 page max
 - No markdown
-- HTML must be complete (<html><body>...</body></html>)
-- Keep it ATS friendly
-- Use simple inline styling
 
 Resume: ${resume}
 Self Description: ${selfDescription}
@@ -274,47 +266,28 @@ Job Description: ${jobDescription}
     const response = await callGemini(() =>
       ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: prompt,
-        config: {
-          responseMimeType: "application/json"
-        }
+        contents: prompt
       })
     );
 
-    console.log("AI RESUME RAW:", response.text);
+    const html =
+      response.text ||
+      response.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    let html = "";
+    console.log("RESUME HTML:", html);
 
-    try {
-      const parsed = JSON.parse(response.text);
-      html = parsed.html;
-    } catch {
-      console.log("❌ JSON parse failed");
-    }
-
-    // ✅ fallback if AI fails
     if (!html || html.length < 50) {
-      html = `
-        <html>
-          <body>
-            <h1>${selfDescription || "Candidate"}</h1>
-            <p>Resume generation failed. Try again.</p>
-          </body>
-        </html>
-      `;
+      throw new Error("Invalid HTML from AI");
     }
 
     return await generatePdfFromHtml(html);
 
   } catch (err) {
-    console.log("❌ Resume AI ERROR:", err.message);
+    console.log("❌ Resume AI failed:", err.message);
 
     return await generatePdfFromHtml(`
-      <html>
-        <body>
-          <h1>Resume generation failed</h1>
-        </body>
-      </html>
+      <h1>Resume Generation Failed</h1>
+      <p>Please try again.</p>
     `);
   }
 }
