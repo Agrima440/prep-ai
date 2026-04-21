@@ -147,6 +147,28 @@ export default function InterviewReport() {
             </div>
           ))}
         </div>
+        <button
+  onClick={async () => {
+    const res = await fetch(
+      `${import.meta.env.VITE_BACKEND_URL}/api/interview/resume/pdf/${data._id}`,
+      {
+        method: "GET",
+        credentials: "include"
+      }
+    );
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "resume.pdf";
+    a.click();
+  }}
+  className="mt-8 w-full bg-pink-600 hover:bg-pink-700 py-3 rounded-xl font-semibold"
+>
+  ✨ Download Resume
+</button>
       </div>
     </div>
   );
