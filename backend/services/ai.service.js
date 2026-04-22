@@ -115,17 +115,19 @@ FORMAT:
 Resume: ${resume}
 Self Description: ${selfDescription}
 Job Description: ${jobDescription}
-`;
+  `;
 
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json"
-        // ❌ IMPORTANT: NO responseSchema
-      }
-    });
+    const response = await callGemini(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json"
+          // ❌ IMPORTANT: NO responseSchema
+        }
+      })
+    );
 
     const rawText =
       response.text ||
@@ -147,15 +149,7 @@ Job Description: ${jobDescription}
 
   } catch (err) {
     console.log("AI ERROR:", err);
-
-    return {
-      matchScore: 60,
-      title: "Software Engineer",
-      technicalQuestions: [],
-      behavioralQuestions: [],
-      skillGaps: [],
-      preparationPlan: []
-    };
+    return getFallback();
   }
 }
 
@@ -227,20 +221,233 @@ function getFallback() {
   };
 }
 
-// ================= PDF =================
-async function generatePdfFromHtml(html) {
-  const browser = await puppeteer.launch({
-    args: ["--no-sandbox", "--disable-setuid-sandbox"]
+function escapeHtml(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function escapePdfText(value = "") {
+  return String(value)
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)")
+    .replace(/[^\x20-\x7E]/g, " ");
+}
+
+function wrapText(text, maxChars = 88) {
+  const input = String(text || "").replace(/\s+/g, " ").trim();
+  if (!input) return [""];
+
+  const words = input.split(" ");
+  const lines = [];
+  let current = "";
+
+  for (const word of words) {
+    const candidate = current ? `${current} ${word}` : word;
+    if (candidate.length <= maxChars) {
+      current = candidate;
+      continue;
+    }
+
+    if (current) {
+      lines.push(current);
+    }
+
+    if (word.length <= maxChars) {
+      current = word;
+      continue;
+    }
+
+    let remaining = word;
+    while (remaining.length > maxChars) {
+      lines.push(remaining.slice(0, maxChars));
+      remaining = remaining.slice(maxChars);
+    }
+    current = remaining;
+  }
+
+  if (current) {
+    lines.push(current);
+  }
+
+  return lines;
+}
+
+function buildResumeHtml({ resume, selfDescription, jobDescription }) {
+  const summary = selfDescription || resume || "Candidate profile not provided.";
+  const job = jobDescription || "MERN Developer";
+
+  return `<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Resume</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 36px;
+        color: #1f2937;
+        line-height: 1.5;
+      }
+      h1, h2, h3 {
+        margin: 0 0 12px;
+      }
+      h1 {
+        font-size: 28px;
+      }
+      h2 {
+        font-size: 18px;
+        color: #db2777;
+      }
+      h3 {
+        margin-top: 24px;
+        font-size: 16px;
+      }
+      .section {
+        margin-top: 18px;
+      }
+      .card {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 16px;
+      }
+      p {
+        margin: 0;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>${escapeHtml(selfDescription?.split("\n")[0] || "Candidate")}</h1>
+    <h2>${escapeHtml(job)}</h2>
+
+    <div class="section card">
+      <h3>Professional Summary</h3>
+      <p>${escapeHtml(summary)}</p>
+    </div>
+
+    <div class="section card">
+      <h3>Resume Content</h3>
+      <p>${escapeHtml(resume || "Resume text was not available, so this PDF was generated from the saved profile details.")}</p>
+    </div>
+  </body>
+</html>`;
+}
+
+function buildResumeText({ resume, selfDescription, jobDescription }) {
+  const sections = [
+    "RESUME",
+    "",
+    `Target Role: ${jobDescription || "MERN Developer"}`,
+    "",
+    "Professional Summary",
+    selfDescription || "Candidate profile not provided.",
+    "",
+    "Resume Content",
+    resume || "Resume text was not available, so this PDF was generated from the saved profile details."
+  ];
+
+  return sections.join("\n");
+}
+
+function createSimplePdf(text) {
+  const lines = String(text)
+    .split("\n")
+    .flatMap((line) => wrapText(line, 88));
+
+  const linesPerPage = 45;
+  const pages = [];
+  for (let i = 0; i < lines.length; i += linesPerPage) {
+    pages.push(lines.slice(i, i + linesPerPage));
+  }
+
+  if (pages.length === 0) {
+    pages.push(["Resume unavailable"]);
+  }
+
+  const objects = [];
+  const addObject = (content) => {
+    objects.push(content);
+    return objects.length;
+  };
+
+  const catalogId = addObject("");
+  const pagesId = addObject("");
+  const fontId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  const pageIds = [];
+
+  for (const pageLines of pages) {
+    const streamLines = [
+      "BT",
+      "/F1 12 Tf",
+      "50 792 Td",
+      "14 TL"
+    ];
+
+    pageLines.forEach((line, index) => {
+      const escaped = escapePdfText(line);
+      streamLines.push(`${index === 0 ? "" : "T* " }(${escaped}) Tj`.trim());
+    });
+    streamLines.push("ET");
+
+    const stream = streamLines.join("\n");
+    const contentId = addObject(
+      `<< /Length ${Buffer.byteLength(stream, "utf8")} >>\nstream\n${stream}\nendstream`
+    );
+    const pageId = addObject(
+      `<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`
+    );
+    pageIds.push(pageId);
+  }
+
+  objects[pagesId - 1] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
+  objects[catalogId - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
+
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+
+  objects.forEach((content, index) => {
+    offsets.push(Buffer.byteLength(pdf, "utf8"));
+    pdf += `${index + 1} 0 obj\n${content}\nendobj\n`;
   });
 
-  const page = await browser.newPage();
-await page.setContent(html, {
-  waitUntil: "networkidle0"
-});
-  const pdf = await page.pdf({ format: "A4" });
+  const xrefOffset = Buffer.byteLength(pdf, "utf8");
+  pdf += `xref\n0 ${objects.length + 1}\n`;
+  pdf += "0000000000 65535 f \n";
 
-  await browser.close();
-  return pdf;
+  for (let i = 1; i < offsets.length; i++) {
+    pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+  }
+
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+  return Buffer.from(pdf, "utf8");
+}
+
+// ================= PDF =================
+async function generatePdfFromHtml(html) {
+  let browser;
+
+  try {
+    browser = await puppeteer.launch({
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    });
+
+    const page = await browser.newPage();
+    await page.setContent(html, {
+      waitUntil: "networkidle0"
+    });
+
+    return await page.pdf({ format: "A4" });
+  } finally {
+    if (browser) {
+      await browser.close();
+    }
+  }
 }
 
 export async function generateResumePdf({
@@ -261,7 +468,7 @@ STRICT:
 Resume: ${resume}
 Self: ${selfDescription}
 JD: ${jobDescription}
-`;
+  `;
 
   try {
     const res = await callGemini(() =>
@@ -298,24 +505,19 @@ JD: ${jobDescription}
   } catch (err) {
     console.log("❌ Resume failed:", err.message);
 
-    // ✅ ALWAYS WORKING FALLBACK
-    return await generatePdfFromHtml(`
-      <!DOCTYPE html>
-      <html>
-        <body style="font-family: Arial; padding: 40px;">
-          <h1>${selfDescription || "Candidate"}</h1>
-          <h2>MERN Developer</h2>
-          <p>${selfDescription || "Developer profile"}</p>
+    const fallbackHtml = buildResumeHtml({
+      resume,
+      selfDescription,
+      jobDescription
+    });
 
-          <h3>Skills</h3>
-          <ul>
-            <li>JavaScript</li>
-            <li>React</li>
-            <li>Node.js</li>
-            <li>MongoDB</li>
-          </ul>
-        </body>
-      </html>
-    `);
+    try {
+      return await generatePdfFromHtml(fallbackHtml);
+    } catch (pdfErr) {
+      console.log("❌ HTML to PDF failed, using plain PDF fallback:", pdfErr.message);
+      return createSimplePdf(
+        buildResumeText({ resume, selfDescription, jobDescription })
+      );
+    }
   }
 }
