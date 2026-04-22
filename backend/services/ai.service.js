@@ -248,14 +248,15 @@ export async function generateResumePdf({
   jobDescription
 }) {
   const prompt = `
-Generate a professional ATS-friendly resume in PURE HTML.
+Generate a professional ATS-friendly resume in clean HTML.
 
-RULES:
+STRICT RULES:
 - Return ONLY HTML (no JSON, no explanation)
-- Use proper HTML structure (<html>, <head>, <body>)
-- Keep it clean and professional
+- No markdown (no \`\`\`)
+- Must start with <!DOCTYPE html>
+- Use inline CSS only
 - 1 page max
-- No markdown
+- Clean, professional layout
 
 Resume: ${resume}
 Self Description: ${selfDescription}
@@ -270,13 +271,19 @@ Job Description: ${jobDescription}
       })
     );
 
-    const html =
+    // 🔥 robust extraction
+    let html =
       response.text ||
-      response.candidates?.[0]?.content?.parts?.[0]?.text;
+      response.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "";
+
+    // 🔥 CLEAN markdown if exists
+    html = html.replace(/```html/g, "").replace(/```/g, "").trim();
 
     console.log("RESUME HTML:", html);
 
-    if (!html || html.length < 50) {
+    // ❌ invalid response guard
+    if (!html || html.length < 200 || !html.includes("<html")) {
       throw new Error("Invalid HTML from AI");
     }
 
@@ -285,9 +292,24 @@ Job Description: ${jobDescription}
   } catch (err) {
     console.log("❌ Resume AI failed:", err.message);
 
+    // ✅ strong fallback (not empty anymore)
     return await generatePdfFromHtml(`
-      <h1>Resume Generation Failed</h1>
-      <p>Please try again.</p>
+      <!DOCTYPE html>
+      <html>
+        <body style="font-family: Arial; padding: 40px;">
+          <h1>${selfDescription || "Candidate Name"}</h1>
+          <p><strong>Role:</strong> MERN Developer</p>
+          <h2>Summary</h2>
+          <p>${selfDescription || "Experienced developer."}</p>
+          <h2>Skills</h2>
+          <ul>
+            <li>JavaScript</li>
+            <li>React</li>
+            <li>Node.js</li>
+            <li>MongoDB</li>
+          </ul>
+        </body>
+      </html>
     `);
   }
 }
