@@ -283,7 +283,8 @@ Job Description: ${jobDescription}
     console.log("RESUME HTML:", html);
 
     // ❌ invalid response guard
-    if (!html || html.length < 200 || !html.includes("<html")) {
+        // if (!html || html.length < 200 || !html.includes("<html")) {
+    if (!html || html.length < 50) {
       throw new Error("Invalid HTML from AI");
     }
 

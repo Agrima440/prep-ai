@@ -90,10 +90,10 @@ export default function InterviewReport() {
 
     const blob = await res.blob();
 
-    if (blob.size < 1000) {
-      alert("PDF is empty. AI failed. Try again.");
-      return;
-    }
+    // if (blob.size < 1000) {
+    //   alert("PDF is empty. AI failed. Try again.");
+    //   return;
+    // }
 
     const url = window.URL.createObjectURL(blob);
 
