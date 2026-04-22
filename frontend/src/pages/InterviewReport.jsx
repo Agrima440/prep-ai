@@ -1,5 +1,6 @@
 import { useLocation } from "react-router-dom";
 import { useState } from "react";
+import api from "../api/axios";
 
 export default function InterviewReport() {
   const location = useLocation();
@@ -14,6 +15,36 @@ export default function InterviewReport() {
 
   const toggle = (i) => {
     setOpenIndex(openIndex === i ? null : i);
+  };
+
+  const downloadResume = async () => {
+    try {
+      const res = await api.get(`/interview/resume/pdf/${data._id}`, {
+        responseType: "blob"
+      });
+
+      const contentType = res.headers["content-type"] || "";
+      if (!contentType.includes("application/pdf")) {
+        throw new Error("Invalid file type");
+      }
+
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+
+      a.href = url;
+      a.download = "resume.pdf";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+
+      window.setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+    } catch (err) {
+      console.error("Resume download failed:", err);
+      alert("Download failed");
+    }
   };
 
   const QuestionCard = ({ q, i }) => (
@@ -74,30 +105,7 @@ export default function InterviewReport() {
         ))}
 <div className="mt-auto pt-10">
    <button
-  onClick={async () => {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/interview/resume/pdf/${data._id}`,
-        { credentials: "include" }
-      );
-
-      if (!res.ok) throw new Error();
-
-      const blob = await res.blob();
-
-      const url = window.URL.createObjectURL(blob);
-
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = "resume.pdf";
-      a.click();
-
-      window.URL.revokeObjectURL(url);
-
-    } catch {
-      alert("Download failed");
-    }
-  }}
+  onClick={downloadResume}
   className="w-full bg-pink-600 py-3 rounded-xl"
 >
   ✨ Download Resume

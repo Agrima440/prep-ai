@@ -1,8 +1,43 @@
 import { GoogleGenAI } from "@google/genai";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 import puppeteer from "puppeteer";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_GENAI_API_KEY
+});
+
+// ================= SCHEMA =================
+const interviewReportSchema = z.object({
+  matchScore: z.number(),
+  technicalQuestions: z.array(
+    z.object({
+      question: z.string(),
+      intention: z.string(),
+      answer: z.string()
+    })
+  ),
+  behavioralQuestions: z.array(
+    z.object({
+      question: z.string(),
+      intention: z.string(),
+      answer: z.string()
+    })
+  ),
+  skillGaps: z.array(
+    z.object({
+      skill: z.string(),
+      severity: z.enum(["low", "medium", "high"])
+    })
+  ),
+  preparationPlan: z.array(
+    z.object({
+      day: z.number(),
+      focus: z.string(),
+      tasks: z.array(z.string())
+    })
+  ),
+  title: z.string()
 });
 
 // ================= RETRY =================
@@ -18,77 +53,178 @@ async function callGemini(fn, retries = 3) {
   }
 }
 
-// ================= INTERVIEW REPORT =================
+// ================= FIX ARRAY =================
+function fixArray(arr) {
+  if (!Array.isArray(arr)) return [];
+
+  return arr
+    .map((item) => {
+      if (typeof item === "string") {
+        try {
+          return JSON.parse(item);
+        } catch {
+          return null;
+        }
+      }
+      return item;
+    })
+    .filter(Boolean);
+}
+
+// ================= MAIN FUNCTION =================
 export async function generateInterviewReport({
   resume,
   selfDescription,
   jobDescription
 }) {
   const prompt = `
-Generate interview report JSON.
+You are an expert interviewer.
 
-STRICT:
-- Only JSON
-- No explanation
-- Minimum 3 technical, 2 behavioral, 3 skills, 7 days plan
+Generate a COMPLETE interview report.
+
+RULES:
+- matchScore must be between 0-100
+- title must be short
+- ALL items must be UNIQUE
+- DO NOT return empty arrays
+- Return ONLY valid JSON
+
+MINIMUM:
+- At least 3 technicalQuestions
+- At least 2 behavioralQuestions
+- At least 3 skillGaps
+- At least 7 preparationPlan days
+
+FORMAT:
 
 {
   "matchScore": number,
   "title": string,
   "technicalQuestions": [
-    { "question": "", "intention": "", "answer": "" }
+    { "question": "...", "intention": "...", "answer": "..." }
   ],
-  "behavioralQuestions": [],
-  "skillGaps": [{ "skill": "", "severity": "low|medium|high" }],
-  "preparationPlan": [{ "day": 1, "focus": "", "tasks": [""] }]
+  "behavioralQuestions": [...],
+  "skillGaps": [
+    { "skill": "...", "severity": "low|medium|high" }
+  ],
+  "preparationPlan": [
+    { "day": number, "focus": "...", "tasks": ["..."] }
+  ]
 }
 
 Resume: ${resume}
-Self: ${selfDescription}
-JD: ${jobDescription}
+Self Description: ${selfDescription}
+Job Description: ${jobDescription}
 `;
 
   try {
-    const res = await ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: prompt
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json"
+        // ❌ IMPORTANT: NO responseSchema
+      }
     });
 
-    const text =
-      res.text ||
-      res.candidates?.[0]?.content?.parts?.[0]?.text ||
+    const rawText =
+      response.text ||
+      response.candidates?.[0]?.content?.parts?.[0]?.text ||
       "{}";
 
-    const parsed = JSON.parse(text);
+    console.log("AI RAW:", rawText); // 🔥 debug
 
-    return parsed;
+    const parsed = JSON.parse(rawText);
+
+    return {
+      matchScore: parsed.matchScore || 60,
+      title: parsed.title || "Software Engineer",
+      technicalQuestions: parsed.technicalQuestions || [],
+      behavioralQuestions: parsed.behavioralQuestions || [],
+      skillGaps: parsed.skillGaps || [],
+      preparationPlan: parsed.preparationPlan || []
+    };
 
   } catch (err) {
-    console.log("AI ERROR:", err.message);
+    console.log("AI ERROR:", err);
 
     return {
       matchScore: 60,
       title: "Software Engineer",
-      technicalQuestions: [
-        {
-          question: "Explain closures",
-          intention: "JS fundamentals",
-          answer: "Closure gives access to outer scope"
-        }
-      ],
-      behavioralQuestions: [
-        {
-          question: "Tell me about yourself",
-          intention: "Communication",
-          answer: "Explain briefly"
-        }
-      ],
-      skillGaps: [{ skill: "System Design", severity: "medium" }],
-      preparationPlan: [
-        { day: 1, focus: "JS", tasks: ["Closures"] }
-      ]
+      technicalQuestions: [],
+      behavioralQuestions: [],
+      skillGaps: [],
+      preparationPlan: []
     };
   }
+}
+
+// ================= FALLBACKS =================
+
+function fallbackTech() {
+  return [
+    {
+      question: "Explain closures in JavaScript",
+      intention: "Check JS fundamentals",
+      answer: "Closures allow access to outer scope variables"
+    },
+    {
+      question: "What is event loop?",
+      intention: "Async understanding",
+      answer: "Handles async operations in JavaScript"
+    },
+    {
+      question: "Difference between var, let, const?",
+      intention: "JS basics",
+      answer: "Scope and hoisting differences"
+    }
+  ];
+}
+
+function fallbackBehavioral() {
+  return [
+    {
+      question: "Tell me about yourself",
+      intention: "Communication",
+      answer: "Explain your experience briefly"
+    },
+    {
+      question: "Describe a challenge you faced",
+      intention: "Problem solving",
+      answer: "Explain situation and how you solved it"
+    }
+  ];
+}
+
+function fallbackSkills() {
+  return [
+    { skill: "System Design", severity: "medium" },
+    { skill: "CI/CD", severity: "medium" },
+    { skill: "Docker", severity: "low" }
+  ];
+}
+
+function fallbackPlan() {
+  return [
+    { day: 1, focus: "JavaScript", tasks: ["Closures", "Promises"] },
+    { day: 2, focus: "React", tasks: ["Hooks", "State"] },
+    { day: 3, focus: "Node.js", tasks: ["API", "Middleware"] },
+    { day: 4, focus: "MongoDB", tasks: ["Aggregation", "Indexing"] },
+    { day: 5, focus: "System Design", tasks: ["Basics", "Scaling"] },
+    { day: 6, focus: "DevOps", tasks: ["Docker", "CI/CD"] },
+    { day: 7, focus: "Revision", tasks: ["Mock Interview"] }
+  ];
+}
+
+function getFallback() {
+  return {
+    matchScore: 60,
+    title: "Software Engineer",
+    technicalQuestions: fallbackTech(),
+    behavioralQuestions: fallbackBehavioral(),
+    skillGaps: fallbackSkills(),
+    preparationPlan: fallbackPlan()
+  };
 }
 
 // ================= PDF =================
@@ -98,24 +234,15 @@ async function generatePdfFromHtml(html) {
   });
 
   const page = await browser.newPage();
-
-  // ✅ FIXED RENDER
-  await page.setContent(html, {
-    waitUntil: "networkidle0"
-  });
-
-  const pdf = await page.pdf({
-    format: "A4",
-    printBackground: true
-  });
-
-  console.log("PDF SIZE:", pdf.length);
+await page.setContent(html, {
+  waitUntil: "networkidle0"
+});
+  const pdf = await page.pdf({ format: "A4" });
 
   await browser.close();
   return pdf;
 }
 
-// ================= RESUME =================
 export async function generateResumePdf({
   resume,
   selfDescription,
