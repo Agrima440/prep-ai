@@ -83,31 +83,27 @@ export const generateResumePdfController = async (req, res) => {
   try {
     const { interviewId } = req.params;
 
-const interviewReport = await interviewReportModel.findOne({
-  _id: interviewId,
-  user: req.user._id
-});
-    if (!interviewReport) {
-      return res.status(404).json({
-        message: "Interview report not found."
-      });
+    const report = await interviewReportModel.findOne({
+      _id: interviewId,
+      user: req.user._id
+    });
+
+    if (!report) {
+      return res.status(404).json({ message: "Not found" });
     }
 
-    const { resume, jobDescription, selfDescription } = interviewReport;
-
-    const pdfBuffer = await generateResumePdf({
-      resume,
-      jobDescription,
-      selfDescription
-    });
+    const pdfBuffer = await generateResumePdf(report);
 
     res.set({
       "Content-Type": "application/pdf",
-"Content-Disposition": `attachment; filename=resume_${interviewId}.pdf`    });
+      "Content-Disposition": `attachment; filename=resume_${interviewId}.pdf`,
+      "Content-Length": pdfBuffer.length
+    });
 
     res.send(pdfBuffer);
 
   } catch (err) {
+    console.log(err);
     res.status(500).json({ message: err.message });
   }
 };
