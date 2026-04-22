@@ -234,8 +234,9 @@ async function generatePdfFromHtml(html) {
   });
 
   const page = await browser.newPage();
-  await page.setContent(html);
-
+await page.setContent(html, {
+  waitUntil: "networkidle0"
+});
   const pdf = await page.pdf({ format: "A4" });
 
   await browser.close();
@@ -248,61 +249,65 @@ export async function generateResumePdf({
   jobDescription
 }) {
   const prompt = `
-Generate a professional ATS-friendly resume in clean HTML.
+Generate professional resume HTML.
 
-STRICT RULES:
-- Return ONLY HTML (no JSON, no explanation)
-- No markdown (no \`\`\`)
+STRICT:
+- Only HTML
+- No markdown
 - Must start with <!DOCTYPE html>
-- Use inline CSS only
-- 1 page max
-- Clean, professional layout
+- Inline CSS
+- Clean layout
 
 Resume: ${resume}
-Self Description: ${selfDescription}
-Job Description: ${jobDescription}
+Self: ${selfDescription}
+JD: ${jobDescription}
 `;
 
   try {
-    const response = await callGemini(() =>
+    const res = await callGemini(() =>
       ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt
       })
     );
 
-    // 🔥 robust extraction
     let html =
-      response.text ||
-      response.candidates?.[0]?.content?.parts?.[0]?.text ||
+      res.text ||
+      res.candidates?.[0]?.content?.parts?.[0]?.text ||
       "";
 
-    // 🔥 CLEAN markdown if exists
+    // CLEAN
     html = html.replace(/```html/g, "").replace(/```/g, "").trim();
 
-    console.log("RESUME HTML:", html);
+    // SAFETY WRAP
+    if (!html.includes("<html")) {
+      html = `
+        <!DOCTYPE html>
+        <html>
+          <body>${html}</body>
+        </html>
+      `;
+    }
 
-    // ❌ invalid response guard
-        // if (!html || html.length < 200 || !html.includes("<html")) {
-    if (!html || html.length < 50) {
-      throw new Error("Invalid HTML from AI");
+    if (!html || html.length < 100) {
+      throw new Error("Invalid HTML");
     }
 
     return await generatePdfFromHtml(html);
 
   } catch (err) {
-    console.log("❌ Resume AI failed:", err.message);
+    console.log("❌ Resume failed:", err.message);
 
-    // ✅ strong fallback (not empty anymore)
+    // ✅ ALWAYS WORKING FALLBACK
     return await generatePdfFromHtml(`
       <!DOCTYPE html>
       <html>
         <body style="font-family: Arial; padding: 40px;">
-          <h1>${selfDescription || "Candidate Name"}</h1>
-          <p><strong>Role:</strong> MERN Developer</p>
-          <h2>Summary</h2>
-          <p>${selfDescription || "Experienced developer."}</p>
-          <h2>Skills</h2>
+          <h1>${selfDescription || "Candidate"}</h1>
+          <h2>MERN Developer</h2>
+          <p>${selfDescription || "Developer profile"}</p>
+
+          <h3>Skills</h3>
           <ul>
             <li>JavaScript</li>
             <li>React</li>

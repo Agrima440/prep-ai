@@ -73,46 +73,35 @@ export default function InterviewReport() {
           </button>
         ))}
 <div className="mt-auto pt-10">
-    <button
-    onClick={async () => {
-  try {
-    const res = await fetch(
-      `${import.meta.env.VITE_BACKEND_URL}/api/interview/resume/pdf/${data._id}`,
-      {
-        method: "GET",
-        credentials: "include"
-      }
-    );
+   <button
+  onClick={async () => {
+    try {
+      const res = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/interview/resume/pdf/${data._id}`,
+        { credentials: "include" }
+      );
 
-    if (!res.ok) {
-      throw new Error("Failed to download PDF");
+      if (!res.ok) throw new Error();
+
+      const blob = await res.blob();
+
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "resume.pdf";
+      a.click();
+
+      window.URL.revokeObjectURL(url);
+
+    } catch {
+      alert("Download failed");
     }
-
-    const blob = await res.blob();
-
-    // if (blob.size < 1000) {
-    //   alert("PDF is empty. AI failed. Try again.");
-    //   return;
-    // }
-
-    const url = window.URL.createObjectURL(blob);
-
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "resume.pdf";
-    a.click();
-
-    window.URL.revokeObjectURL(url);
-
-  } catch (err) {
-    console.error(err);
-    alert("Something went wrong while downloading resume");
-  }
-}}
-    className="w-full bg-pink-600 hover:bg-pink-700 py-3 rounded-xl font-semibold"
-  >
-    ✨ Download Resume
-  </button>
+  }}
+  className="w-full bg-pink-600 py-3 rounded-xl"
+>
+  ✨ Download Resume
+</button>
 </div>
       </div>
 
