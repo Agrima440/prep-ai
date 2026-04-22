@@ -12,7 +12,7 @@ export default function InterviewForm() {
 
   const navigate = useNavigate();
 
-  // ✅ FETCH ALL REPORTS
+  // ✅ FETCH REPORTS
   useEffect(() => {
     fetchReports();
   }, []);
@@ -20,11 +20,10 @@ export default function InterviewForm() {
   const fetchReports = async () => {
     try {
       const res = await api.get("/interview");
-      console.log("FETCHED REPORTS:", res.data.interviewReports);
       setReports(res.data.interviewReports || []);
-      console.log("REPORTS SET IN STATE:", res.data.interviewReports);
     } catch (err) {
-console.log("ERROR FETCHING REPORTS:", err.response?.data || err.message);    }
+      console.log("Fetch error:", err);
+    }
   };
 
   // ✅ GENERATE REPORT
@@ -50,10 +49,10 @@ console.log("ERROR FETCHING REPORTS:", err.response?.data || err.message);    }
 
       toast.success("Report generated 🚀");
 
-      await fetchReports(); // ✅ refresh recent list
+      await fetchReports();
 
-      navigate("/report");
-    } catch (err) {
+      navigate("/report", { state: report });
+    } catch {
       toast.error("Failed to generate report");
     } finally {
       setLoading(false);
@@ -63,10 +62,54 @@ console.log("ERROR FETCHING REPORTS:", err.response?.data || err.message);    }
   // ✅ OPEN REPORT
   const openReport = (report) => {
     localStorage.setItem("report", JSON.stringify(report));
-navigate("/report", { state: report });  };
+    navigate("/report", { state: report });
+  };
+
+  // ✅ LOGOUT
+  const logout = async () => {
+    await api.post("/auth/logout");
+    toast.success("Logged out 👋");
+    navigate("/login");
+  };
+
+  // ✅ DELETE SINGLE
+  const deleteReport = async (id) => {
+    if (!confirm("Delete this report?")) return;
+
+    try {
+      await api.delete(`/interview/${id}`);
+      toast.success("Deleted successfully 🗑️");
+      fetchReports();
+    } catch {
+      toast.error("Delete failed");
+    }
+  };
+
+  // ✅ DELETE ALL
+  const deleteAll = async () => {
+    if (!confirm("Delete ALL reports?")) return;
+
+    try {
+      await api.delete("/interview/all");
+      toast.success("All reports deleted 🧹");
+      fetchReports();
+    } catch {
+      toast.error("Delete all failed");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#0B0F19] text-white flex flex-col items-center p-6">
+
+      {/* 🔝 LOGOUT BUTTON */}
+      <div className="w-full flex justify-end mb-4">
+        <button
+          onClick={logout}
+          className="bg-red-500 px-4 py-2 rounded-lg hover:bg-red-600"
+        >
+          Logout
+        </button>
+      </div>
 
       {/* HEADER */}
       <div className="text-center max-w-2xl mb-10">
@@ -84,14 +127,11 @@ navigate("/report", { state: report });  };
 
         {/* LEFT */}
         <div className="flex flex-col">
-          <div className="flex justify-between mb-2">
-            <h2 className="font-semibold">Target Job Description</h2>
-            <span className="text-xs bg-pink-600 px-2 py-1 rounded">REQUIRED</span>
-          </div>
+          <h2 className="font-semibold mb-2">Target Job Description</h2>
 
           <textarea
             placeholder="Paste job description..."
-            className="flex-1 h-64 p-4 rounded-lg bg-[#0B0F19] border border-gray-700 focus:ring-2 focus:ring-pink-500 outline-none"
+            className="flex-1 h-64 p-4 rounded-lg bg-[#0B0F19] border border-gray-700"
             onChange={(e) => setJobDescription(e.target.value)}
           />
         </div>
@@ -99,55 +139,53 @@ navigate("/report", { state: report });  };
         {/* RIGHT */}
         <div className="flex flex-col gap-4">
 
-          {/* UPLOAD */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <h2 className="font-semibold">Upload Resume</h2>
-              <span className="text-xs bg-green-600 px-2 py-1 rounded">
-                BEST
-              </span>
-            </div>
-
-            <label className="flex items-center justify-center h-40 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer hover:border-pink-500">
-              <p className="text-gray-400 text-sm">
-                {file ? file.name : "Click to upload PDF"}
-              </p>
-              <input
-                type="file"
-                hidden
-                onChange={(e) => setFile(e.target.files[0])}
-              />
-            </label>
-          </div>
+          <label className="flex items-center justify-center h-40 border-2 border-dashed border-gray-600 rounded-lg cursor-pointer">
+            <p className="text-gray-400 text-sm">
+              {file ? file.name : "Click to upload PDF"}
+            </p>
+            <input
+              type="file"
+              hidden
+              onChange={(e) => setFile(e.target.files[0])}
+            />
+          </label>
 
           <div className="text-center text-gray-500 text-sm">OR</div>
 
-          {/* SELF DESC */}
           <textarea
             placeholder="Describe your experience..."
-            className="h-32 p-4 rounded-lg bg-[#0B0F19] border border-gray-700 focus:ring-2 focus:ring-pink-500"
+            className="h-32 p-4 rounded-lg bg-[#0B0F19] border border-gray-700"
             onChange={(e) => setSelfDescription(e.target.value)}
           />
-
-          <div className="bg-blue-900/30 border border-blue-500/30 text-blue-300 text-sm p-3 rounded-lg">
-            Either Resume or Self Description is required
-          </div>
         </div>
       </div>
 
-      {/* BUTTON */}
+      {/* GENERATE BUTTON */}
       <button
         onClick={handleSubmit}
-        className="mt-8 px-8 py-3 rounded-xl bg-gradient-to-r from-pink-500 to-red-500 hover:scale-105 transition shadow-lg"
+        className="mt-8 px-8 py-3 rounded-xl bg-pink-500 hover:scale-105 transition"
       >
         {loading ? "Generating..." : "✨ Generate My Interview Strategy"}
       </button>
 
-      {/* RECENT REPORTS */}
+      {/* REPORTS */}
       <div className="w-full max-w-5xl mt-12">
-        <h2 className="text-2xl font-bold mb-6">
-          My Recent Interview Plans
-        </h2>
+
+        {/* HEADER + DELETE ALL */}
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">
+            My Recent Interview Plans
+          </h2>
+
+          {reports.length > 0 && (
+            <button
+              onClick={deleteAll}
+              className="bg-red-600 px-4 py-2 rounded-lg hover:bg-red-700 text-sm"
+            >
+              Delete All
+            </button>
+          )}
+        </div>
 
         {reports.length === 0 ? (
           <p className="text-gray-400">No reports yet</p>
@@ -156,31 +194,42 @@ navigate("/report", { state: report });  };
             {reports.map((r, i) => (
               <div
                 key={i}
-                onClick={() => openReport(r)}
-                className="bg-[#111827] border border-gray-700 rounded-xl p-5 cursor-pointer hover:border-pink-500 hover:scale-[1.02] transition"
+                className="relative bg-[#111827] border border-gray-700 rounded-xl p-5 hover:border-pink-500 transition"
               >
-                <h3 className="text-lg font-semibold mb-2">
-                  {r.title || "Untitled Role"}
-                </h3>
+                {/* ❌ DELETE BUTTON */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteReport(r._id);
+                  }}
+                  className="absolute top-2 right-2 text-red-400 hover:text-red-600"
+                >
+                  ❌
+                </button>
 
-                <p className="text-gray-400 text-sm">
-                  Generated on{" "}
-                  {new Date(r.createdAt).toLocaleDateString()}
-                </p>
+                {/* CLICK AREA */}
+                <div onClick={() => openReport(r)} className="cursor-pointer">
+                  <h3 className="text-lg font-semibold mb-2">
+                    {r.title || "Untitled Role"}
+                  </h3>
 
-                <p className="text-pink-500 mt-2 font-medium">
-                  Match Score: {r.matchScore}%
-                </p>
+                  <p className="text-gray-400 text-sm">
+                    {new Date(r.createdAt).toLocaleDateString()}
+                  </p>
 
-                <p className="text-green-400 text-xs mt-1">
-                  Strong match for this role
-                </p>
+                  <p className="text-pink-500 mt-2 font-medium">
+                    Match Score: {r.matchScore}%
+                  </p>
+
+                  <p className="text-green-400 text-xs mt-1">
+                    Strong match for this role
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         )}
       </div>
-
     </div>
   );
 }
