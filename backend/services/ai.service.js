@@ -277,9 +277,133 @@ function wrapText(text, maxChars = 88) {
   return lines;
 }
 
+function splitResumeSections(resume = "") {
+  const normalized = String(resume || "")
+    .replace(/\r/g, "")
+    .replace(/\f/g, "\n")
+    .replace(/[ \t]+\n/g, "\n");
+
+  const sectionNames = [
+    "PROFILE",
+    "TECHNICAL SKILLS",
+    "PROFESSIONAL EXPERIENCE",
+    "PROJECTS",
+    "EDUCATION"
+  ];
+
+  const lines = normalized
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const sections = {
+    header: [],
+    PROFILE: [],
+    "TECHNICAL SKILLS": [],
+    "PROFESSIONAL EXPERIENCE": [],
+    PROJECTS: [],
+    EDUCATION: []
+  };
+
+  let current = "header";
+  for (const line of lines) {
+    if (sectionNames.includes(line.toUpperCase())) {
+      current = line.toUpperCase();
+      continue;
+    }
+    sections[current].push(line);
+  }
+
+  return sections;
+}
+
+function parseHeader(lines = [], selfDescription = "", jobDescription = "") {
+  const firstLine = lines[0] || "";
+  const email = lines.find((line) => /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/i.test(line)) || "";
+  const phone = lines.find((line) => /(?:\+?\d[\d\s-]{8,}\d)/.test(line)) || "";
+  const linkedin = lines.find((line) => /linkedin\.com/i.test(line)) || "";
+  const github = lines.find((line) => /github\.com/i.test(line)) || "";
+  const location = lines.find((line) =>
+    line &&
+    line !== firstLine &&
+    line !== email &&
+    line !== phone &&
+    line !== linkedin &&
+    line !== github &&
+    !/^https?:\/\//i.test(line)
+  ) || "";
+
+  let name = "Candidate";
+  let title = jobDescription || "Full Stack Developer";
+
+  if (firstLine) {
+    const titleMatch = firstLine.match(/(.*?)(Full Stack.*|Frontend.*|Backend.*|Software.*|Developer.*|Engineer.*)$/i);
+    if (titleMatch) {
+      name = titleMatch[1].trim() || name;
+      title = titleMatch[2].trim() || title;
+    } else {
+      const words = firstLine.split(/\s+/);
+      name = words.slice(0, 2).join(" ") || name;
+      title = words.slice(2).join(" ") || title;
+    }
+  } else if (selfDescription) {
+    name = selfDescription.split("\n")[0].trim() || name;
+  }
+
+  return { name, title, email, phone, location, linkedin, github };
+}
+
+function renderList(items = []) {
+  return items
+    .filter(Boolean)
+    .map((item) => `<li>${escapeHtml(item)}</li>`)
+    .join("");
+}
+
+function renderParagraphs(lines = []) {
+  return lines
+    .filter(Boolean)
+    .map((line) => `<p>${escapeHtml(line)}</p>`)
+    .join("");
+}
+
+function renderSkillLines(lines = []) {
+  if (!lines.length) {
+    return "<p><strong>Core Stack:</strong> React, Node.js, Express.js, MongoDB, JavaScript</p>";
+  }
+
+  return lines
+    .filter(Boolean)
+    .map((line) => {
+      const separatorIndex = line.indexOf(":");
+      if (separatorIndex === -1) {
+        return `<p>${escapeHtml(line)}</p>`;
+      }
+
+      const label = line.slice(0, separatorIndex);
+      const value = line.slice(separatorIndex + 1);
+      return `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value.trim())}</p>`;
+    })
+    .join("");
+}
+
 function buildResumeHtml({ resume, selfDescription, jobDescription }) {
-  const summary = selfDescription || resume || "Candidate profile not provided.";
-  const job = jobDescription || "MERN Developer";
+  const sections = splitResumeSections(resume);
+  const header = parseHeader(sections.header, selfDescription, jobDescription);
+  const profile = sections.PROFILE.length
+    ? sections.PROFILE.join(" ")
+    : (selfDescription || "Solution-driven developer with strong full-stack experience.");
+  const skills = sections["TECHNICAL SKILLS"];
+  const experience = sections["PROFESSIONAL EXPERIENCE"];
+  const projects = sections.PROJECTS;
+  const education = sections.EDUCATION;
+  const contactItems = [
+    header.email,
+    header.phone,
+    header.location,
+    header.linkedin,
+    header.github
+  ].filter(Boolean);
 
   return `<!DOCTYPE html>
 <html>
@@ -287,53 +411,131 @@ function buildResumeHtml({ resume, selfDescription, jobDescription }) {
     <meta charset="UTF-8" />
     <title>Resume</title>
     <style>
+      @page {
+        size: A4;
+        margin: 22mm 18mm;
+      }
       body {
-        font-family: Arial, sans-serif;
-        padding: 36px;
-        color: #1f2937;
-        line-height: 1.5;
+        font-family: Georgia, "Times New Roman", serif;
+        color: #111111;
+        line-height: 1.25;
+        font-size: 12px;
+        margin: 0;
       }
-      h1, h2, h3 {
-        margin: 0 0 12px;
+      .page {
+        width: 100%;
       }
-      h1 {
-        font-size: 28px;
+      .header {
+        margin-bottom: 14px;
       }
-      h2 {
-        font-size: 18px;
-        color: #db2777;
+      .name-row {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-bottom: 6px;
       }
-      h3 {
-        margin-top: 24px;
-        font-size: 16px;
+      .name {
+        font-size: 26px;
+        font-weight: 700;
+      }
+      .title {
+        font-size: 15px;
+        font-style: italic;
+      }
+      .contacts {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 18px;
+        font-size: 11px;
+        margin-bottom: 8px;
+      }
+      .contact {
+        white-space: nowrap;
       }
       .section {
-        margin-top: 18px;
+        margin-top: 12px;
       }
-      .card {
-        background: #f9fafb;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
-        padding: 16px;
+      .section-title {
+        font-size: 15px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+        border-bottom: 2px solid #222;
+        padding-bottom: 2px;
+        margin-bottom: 6px;
       }
       p {
+        margin: 0 0 2px;
+      }
+      .summary {
+        text-align: justify;
+      }
+      .skill-line {
+        margin-bottom: 3px;
+      }
+      .skill-line strong {
+        font-weight: 700;
+      }
+      .entry-list {
         margin: 0;
-        white-space: pre-wrap;
+        padding-left: 18px;
+      }
+      .entry-list li {
+        margin-bottom: 2px;
+      }
+      .mono-block p {
+        margin-bottom: 2px;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
       }
     </style>
   </head>
   <body>
-    <h1>${escapeHtml(selfDescription?.split("\n")[0] || "Candidate")}</h1>
-    <h2>${escapeHtml(job)}</h2>
+    <div class="page">
+      <div class="header">
+        <div class="name-row">
+          <div class="name">${escapeHtml(header.name)}</div>
+          <div class="title">${escapeHtml(header.title)}</div>
+        </div>
+        <div class="contacts">
+          ${contactItems.map((item) => `<div class="contact">${escapeHtml(item)}</div>`).join("")}
+        </div>
+      </div>
 
-    <div class="section card">
-      <h3>Professional Summary</h3>
-      <p>${escapeHtml(summary)}</p>
-    </div>
+      <div class="section">
+        <div class="section-title">Profile</div>
+        <p class="summary">${escapeHtml(profile)}</p>
+      </div>
 
-    <div class="section card">
-      <h3>Resume Content</h3>
-      <p>${escapeHtml(resume || "Resume text was not available, so this PDF was generated from the saved profile details.")}</p>
+      <div class="section">
+        <div class="section-title">Technical Skills</div>
+        <div class="mono-block">
+          ${renderSkillLines(skills)}
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Professional Experience</div>
+        <ul class="entry-list">
+          ${renderList(experience.length ? experience : ["Experience details not available."])}
+        </ul>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Projects</div>
+        <ul class="entry-list">
+          ${renderList(projects.length ? projects : ["Project details not available."])}
+        </ul>
+      </div>
+
+      <div class="section">
+        <div class="section-title">Education</div>
+        <div class="mono-block">
+          ${renderParagraphs(education.length ? education : ["Education details not available."])}
+        </div>
+      </div>
     </div>
   </body>
 </html>`;
@@ -455,69 +657,18 @@ export async function generateResumePdf({
   selfDescription,
   jobDescription
 }) {
-  const prompt = `
-Generate professional resume HTML.
-
-STRICT:
-- Only HTML
-- No markdown
-- Must start with <!DOCTYPE html>
-- Inline CSS
-- Clean layout
-
-Resume: ${resume}
-Self: ${selfDescription}
-JD: ${jobDescription}
-  `;
+  const html = buildResumeHtml({
+    resume,
+    selfDescription,
+    jobDescription
+  });
 
   try {
-    const res = await callGemini(() =>
-      ai.models.generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt
-      })
-    );
-
-    let html =
-      res.text ||
-      res.candidates?.[0]?.content?.parts?.[0]?.text ||
-      "";
-
-    // CLEAN
-    html = html.replace(/```html/g, "").replace(/```/g, "").trim();
-
-    // SAFETY WRAP
-    if (!html.includes("<html")) {
-      html = `
-        <!DOCTYPE html>
-        <html>
-          <body>${html}</body>
-        </html>
-      `;
-    }
-
-    if (!html || html.length < 100) {
-      throw new Error("Invalid HTML");
-    }
-
     return await generatePdfFromHtml(html);
-
   } catch (err) {
-    console.log("❌ Resume failed:", err.message);
-
-    const fallbackHtml = buildResumeHtml({
-      resume,
-      selfDescription,
-      jobDescription
-    });
-
-    try {
-      return await generatePdfFromHtml(fallbackHtml);
-    } catch (pdfErr) {
-      console.log("❌ HTML to PDF failed, using plain PDF fallback:", pdfErr.message);
-      return createSimplePdf(
-        buildResumeText({ resume, selfDescription, jobDescription })
-      );
-    }
+    console.log("❌ Styled resume PDF failed, using plain PDF fallback:", err.message);
+    return createSimplePdf(
+      buildResumeText({ resume, selfDescription, jobDescription })
+    );
   }
 }
