@@ -72,31 +72,29 @@ export default function InterviewForm() {
     navigate("/login");
   };
 
-  // ✅ DELETE SINGLE
-  const deleteReport = async (id) => {
-    if (!confirm("Delete this report?")) return;
+const deleteReport = async (id) => {
+  if (!window.confirm("Delete this report?")) return;
 
-    try {
-      await api.delete(`/interview/${id}`);
-      toast.success("Deleted successfully 🗑️");
-      fetchReports();
-    } catch {
-      toast.error("Delete failed");
-    }
-  };
+  try {
+    await api.delete(`/interview/${id}`);
+    toast.success("Deleted successfully 🗑️");
+    fetchReports();
+  } catch {
+    toast.error("Delete failed");
+  }
+};
 
-  // ✅ DELETE ALL
-  const deleteAll = async () => {
-    if (!confirm("Delete ALL reports?")) return;
+const deleteAll = async () => {
+  if (!window.confirm("Delete ALL reports?")) return;
 
-    try {
-      await api.delete("/interview/all");
-      toast.success("All reports deleted 🧹");
-      fetchReports();
-    } catch {
-      toast.error("Delete all failed");
-    }
-  };
+  try {
+    await api.delete("/interview/all");
+    toast.success("All reports deleted 🧹");
+    fetchReports();
+  } catch {
+    toast.error("Delete all failed");
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#0B0F19] text-white flex flex-col items-center p-6">
