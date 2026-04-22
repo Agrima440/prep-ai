@@ -2,7 +2,8 @@
   "name": "backend",
   "type": "module",
   "scripts": {
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "postinstall": "npx puppeteer browsers install chrome"
   },
   "dependencies": {
     "@google/genai": "^1.48.0",

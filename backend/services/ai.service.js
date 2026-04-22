@@ -40,6 +40,47 @@ const interviewReportSchema = z.object({
   title: z.string()
 });
 
+const tailoredResumeSchema = z.object({
+  header: z.object({
+    name: z.string(),
+    title: z.string(),
+    email: z.string().optional().default(""),
+    phone: z.string().optional().default(""),
+    location: z.string().optional().default(""),
+    linkedin: z.string().optional().default(""),
+    github: z.string().optional().default("")
+  }),
+  summary: z.string(),
+  skills: z.array(
+    z.object({
+      label: z.string(),
+      items: z.array(z.string())
+    })
+  ),
+  experience: z.array(
+    z.object({
+      company: z.string(),
+      role: z.string(),
+      meta: z.string().optional().default(""),
+      highlights: z.array(z.string())
+    })
+  ),
+  projects: z.array(
+    z.object({
+      name: z.string(),
+      meta: z.string().optional().default(""),
+      highlights: z.array(z.string())
+    })
+  ),
+  education: z.array(
+    z.object({
+      institution: z.string(),
+      degree: z.string(),
+      meta: z.string().optional().default("")
+    })
+  )
+});
+
 // ================= RETRY =================
 async function callGemini(fn, retries = 3) {
   try {
@@ -69,6 +110,14 @@ function fixArray(arr) {
       return item;
     })
     .filter(Boolean);
+}
+
+function safeJsonParse(text, fallback = {}) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return fallback;
+  }
 }
 
 // ================= MAIN FUNCTION =================
@@ -353,50 +402,316 @@ function parseHeader(lines = [], selfDescription = "", jobDescription = "") {
   return { name, title, email, phone, location, linkedin, github };
 }
 
-function renderList(items = []) {
-  return items
-    .filter(Boolean)
-    .map((item) => `<li>${escapeHtml(item)}</li>`)
-    .join("");
-}
-
-function renderParagraphs(lines = []) {
-  return lines
-    .filter(Boolean)
-    .map((line) => `<p>${escapeHtml(line)}</p>`)
-    .join("");
-}
-
-function renderSkillLines(lines = []) {
-  if (!lines.length) {
-    return "<p><strong>Core Stack:</strong> React, Node.js, Express.js, MongoDB, JavaScript</p>";
-  }
-
+function parseSkillGroups(lines = []) {
   return lines
     .filter(Boolean)
     .map((line) => {
       const separatorIndex = line.indexOf(":");
       if (separatorIndex === -1) {
-        return `<p>${escapeHtml(line)}</p>`;
+        return {
+          label: "Core Skills",
+          items: line.split(",").map((item) => item.trim()).filter(Boolean)
+        };
       }
 
-      const label = line.slice(0, separatorIndex);
-      const value = line.slice(separatorIndex + 1);
-      return `<p><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value.trim())}</p>`;
+      return {
+        label: line.slice(0, separatorIndex).trim(),
+        items: line
+          .slice(separatorIndex + 1)
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)
+      };
     })
+    .filter((group) => group.items.length);
+}
+
+function parseExperienceEntries(lines = []) {
+  const entries = [];
+  let current = null;
+
+  for (const line of lines.filter(Boolean)) {
+    const isBullet = /^[•*-]/.test(line);
+    const looksLikeMeta = /\b\d{2}\/\d{4}\b/.test(line) || /\bPresent\b/i.test(line);
+
+    if (!current) {
+      current = {
+        company: line,
+        role: "",
+        meta: "",
+        highlights: []
+      };
+      continue;
+    }
+
+    if (!current.role && !isBullet && !looksLikeMeta) {
+      current.role = line;
+      continue;
+    }
+
+    if (!current.meta && looksLikeMeta) {
+      current.meta = line.replace(/\s+/g, " ").trim();
+      continue;
+    }
+
+    if (!isBullet && current.role && current.highlights.length >= 2 && !looksLikeMeta) {
+      entries.push(current);
+      current = {
+        company: line,
+        role: "",
+        meta: "",
+        highlights: []
+      };
+      continue;
+    }
+
+    current.highlights.push(line.replace(/^[•*-]\s*/, ""));
+  }
+
+  if (current) {
+    entries.push(current);
+  }
+
+  return entries.filter((entry) => entry.company);
+}
+
+function parseProjectEntries(lines = []) {
+  const entries = [];
+  let current = null;
+
+  for (const line of lines.filter(Boolean)) {
+    const isTechStack = /^tech stack:/i.test(line);
+    const looksLikeMeta = /\b\d{2}\/\d{4}\b/.test(line);
+    const isBullet = /^[•*-]/.test(line);
+
+    if (!current) {
+      current = {
+        name: line,
+        meta: "",
+        highlights: []
+      };
+      continue;
+    }
+
+    if ((looksLikeMeta || isTechStack) && !current.meta) {
+      current.meta = line;
+      continue;
+    }
+
+    if (!isBullet && current.highlights.length >= 2 && !isTechStack && !looksLikeMeta) {
+      entries.push(current);
+      current = {
+        name: line,
+        meta: "",
+        highlights: []
+      };
+      continue;
+    }
+
+    current.highlights.push(line.replace(/^[•*-]\s*/, ""));
+  }
+
+  if (current) {
+    entries.push(current);
+  }
+
+  return entries.filter((entry) => entry.name);
+}
+
+function parseEducationEntries(lines = []) {
+  if (!lines.length) {
+    return [];
+  }
+
+  const first = lines[0] || "";
+  const second = lines[1] || "";
+  const meta = lines.slice(2).join(" | ");
+
+  return [{
+    institution: second || first,
+    degree: second ? first : "",
+    meta
+  }];
+}
+
+function fallbackTailoredResume({ resume, selfDescription, jobDescription }) {
+  const sections = splitResumeSections(resume);
+  const header = parseHeader(sections.header, selfDescription, jobDescription);
+  const summary = sections.PROFILE.length
+    ? sections.PROFILE.join(" ")
+    : (selfDescription || "Solution-driven developer with strong full-stack experience.");
+  const skills = parseSkillGroups(sections["TECHNICAL SKILLS"]);
+  const experience = parseExperienceEntries(sections["PROFESSIONAL EXPERIENCE"]);
+  const projects = parseProjectEntries(sections.PROJECTS);
+  const education = parseEducationEntries(sections.EDUCATION);
+
+  return {
+    header,
+    summary,
+    skills: skills.length ? skills : [{
+      label: "Core Stack",
+      items: ["React", "Node.js", "Express.js", "MongoDB", "JavaScript"]
+    }],
+    experience,
+    projects,
+    education
+  };
+}
+
+async function generateTailoredResumeData({ resume, selfDescription, jobDescription }) {
+  const fallback = fallbackTailoredResume({ resume, selfDescription, jobDescription });
+
+  if (!resume && !selfDescription) {
+    return fallback;
+  }
+
+  const prompt = `
+You are an expert technical resume writer.
+
+Create a tailored resume for the target role using ONLY facts present in the source resume/self-description.
+Do not invent companies, dates, projects, degrees, tools, or achievements.
+You may rewrite language, reorder content, tighten bullets, and prioritize the most relevant information for the job description.
+Do not include sections like "Required Skills", "Good to Have", or raw job description text in the output.
+Keep the resume concise, professional, ATS-friendly, and strong enough to apply for the job.
+Return ONLY valid JSON.
+
+Required JSON shape:
+{
+  "header": {
+    "name": "string",
+    "title": "string",
+    "email": "string",
+    "phone": "string",
+    "location": "string",
+    "linkedin": "string",
+    "github": "string"
+  },
+  "summary": "string",
+  "skills": [
+    { "label": "string", "items": ["string"] }
+  ],
+  "experience": [
+    {
+      "company": "string",
+      "role": "string",
+      "meta": "string",
+      "highlights": ["string"]
+    }
+  ],
+  "projects": [
+    {
+      "name": "string",
+      "meta": "string",
+      "highlights": ["string"]
+    }
+  ],
+  "education": [
+    {
+      "institution": "string",
+      "degree": "string",
+      "meta": "string"
+    }
+  ]
+}
+
+Target job description:
+${jobDescription}
+
+Source resume:
+${resume}
+
+Self description:
+${selfDescription}
+`;
+
+  try {
+    const response = await callGemini(() =>
+      ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: zodToJsonSchema(tailoredResumeSchema)
+        }
+      })
+    );
+
+    const rawText =
+      response.text ||
+      response.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "{}";
+
+    const parsed = tailoredResumeSchema.safeParse(safeJsonParse(rawText, {}));
+    if (parsed.success) {
+      return parsed.data;
+    }
+
+    return fallback;
+  } catch (err) {
+    console.log("TAILORED RESUME AI ERROR:", err);
+    return fallback;
+  }
+}
+
+function renderSkills(skills = []) {
+  return skills
+    .filter((group) => group?.label && Array.isArray(group.items) && group.items.length)
+    .map((group) => `<p><strong>${escapeHtml(group.label)}:</strong> ${escapeHtml(group.items.join(", "))}</p>`)
     .join("");
 }
 
-function buildResumeHtml({ resume, selfDescription, jobDescription }) {
-  const sections = splitResumeSections(resume);
-  const header = parseHeader(sections.header, selfDescription, jobDescription);
-  const profile = sections.PROFILE.length
-    ? sections.PROFILE.join(" ")
-    : (selfDescription || "Solution-driven developer with strong full-stack experience.");
-  const skills = sections["TECHNICAL SKILLS"];
-  const experience = sections["PROFESSIONAL EXPERIENCE"];
-  const projects = sections.PROJECTS;
-  const education = sections.EDUCATION;
+function renderExperience(experience = []) {
+  return experience
+    .filter((entry) => entry?.company)
+    .map((entry) => `
+      <div class="entry">
+        <div class="entry-header">
+          <div>
+            <div class="entry-title">${escapeHtml(entry.company)}</div>
+            ${entry.role ? `<div class="entry-subtitle">${escapeHtml(entry.role)}</div>` : ""}
+          </div>
+          ${entry.meta ? `<div class="entry-meta">${escapeHtml(entry.meta)}</div>` : ""}
+        </div>
+        ${entry.highlights?.length ? `<ul class="entry-list">${entry.highlights.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+      </div>
+    `)
+    .join("");
+}
+
+function renderProjects(projects = []) {
+  return projects
+    .filter((project) => project?.name)
+    .map((project) => `
+      <div class="entry">
+        <div class="entry-header">
+          <div class="entry-title">${escapeHtml(project.name)}</div>
+          ${project.meta ? `<div class="entry-meta">${escapeHtml(project.meta)}</div>` : ""}
+        </div>
+        ${project.highlights?.length ? `<ul class="entry-list">${project.highlights.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+      </div>
+    `)
+    .join("");
+}
+
+function renderEducation(education = []) {
+  return education
+    .filter((entry) => entry?.institution || entry?.degree)
+    .map((entry) => `
+      <div class="entry">
+        <div class="entry-header">
+          <div>
+            ${entry.institution ? `<div class="entry-title">${escapeHtml(entry.institution)}</div>` : ""}
+            ${entry.degree ? `<div class="entry-subtitle">${escapeHtml(entry.degree)}</div>` : ""}
+          </div>
+          ${entry.meta ? `<div class="entry-meta">${escapeHtml(entry.meta)}</div>` : ""}
+        </div>
+      </div>
+    `)
+    .join("");
+}
+
+function buildResumeHtml(data) {
+  const header = data.header || {};
   const contactItems = [
     header.email,
     header.phone,
@@ -470,20 +785,34 @@ function buildResumeHtml({ resume, selfDescription, jobDescription }) {
       .summary {
         text-align: justify;
       }
-      .skill-line {
-        margin-bottom: 3px;
+      .entry {
+        margin-bottom: 8px;
       }
-      .skill-line strong {
+      .entry-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 2px;
+      }
+      .entry-title {
         font-weight: 700;
+      }
+      .entry-subtitle {
+        font-weight: 700;
+      }
+      .entry-meta {
+        white-space: nowrap;
+        font-size: 11px;
+      }
+      .mono-block p {
+        margin-bottom: 2px;
       }
       .entry-list {
         margin: 0;
         padding-left: 18px;
       }
       .entry-list li {
-        margin-bottom: 2px;
-      }
-      .mono-block p {
         margin-bottom: 2px;
       }
       a {
@@ -506,53 +835,75 @@ function buildResumeHtml({ resume, selfDescription, jobDescription }) {
 
       <div class="section">
         <div class="section-title">Profile</div>
-        <p class="summary">${escapeHtml(profile)}</p>
+        <p class="summary">${escapeHtml(data.summary || "Strong full stack developer with relevant project experience.")}</p>
       </div>
 
       <div class="section">
         <div class="section-title">Technical Skills</div>
         <div class="mono-block">
-          ${renderSkillLines(skills)}
+          ${renderSkills(data.skills)}
         </div>
       </div>
 
       <div class="section">
         <div class="section-title">Professional Experience</div>
-        <ul class="entry-list">
-          ${renderList(experience.length ? experience : ["Experience details not available."])}
-        </ul>
+        ${renderExperience(data.experience)}
       </div>
 
       <div class="section">
         <div class="section-title">Projects</div>
-        <ul class="entry-list">
-          ${renderList(projects.length ? projects : ["Project details not available."])}
-        </ul>
+        ${renderProjects(data.projects)}
       </div>
 
       <div class="section">
         <div class="section-title">Education</div>
-        <div class="mono-block">
-          ${renderParagraphs(education.length ? education : ["Education details not available."])}
-        </div>
+        ${renderEducation(data.education)}
       </div>
     </div>
   </body>
 </html>`;
 }
 
-function buildResumeText({ resume, selfDescription, jobDescription }) {
-  const sections = [
-    "RESUME",
-    "",
-    `Target Role: ${jobDescription || "MERN Developer"}`,
-    "",
-    "Professional Summary",
-    selfDescription || "Candidate profile not provided.",
-    "",
-    "Resume Content",
-    resume || "Resume text was not available, so this PDF was generated from the saved profile details."
-  ];
+function buildResumeTextFromData(data) {
+  const sections = [];
+  const header = data.header || {};
+
+  sections.push([header.name, header.title].filter(Boolean).join(" "));
+  sections.push([header.email, header.phone, header.location, header.linkedin, header.github].filter(Boolean).join(" | "));
+  sections.push("");
+  sections.push("PROFILE");
+  sections.push(data.summary || "");
+  sections.push("");
+  sections.push("TECHNICAL SKILLS");
+  (data.skills || []).forEach((group) => {
+    sections.push(`${group.label}: ${(group.items || []).join(", ")}`);
+  });
+  sections.push("");
+  sections.push("PROFESSIONAL EXPERIENCE");
+  (data.experience || []).forEach((entry) => {
+    sections.push([entry.company, entry.role].filter(Boolean).join(" - "));
+    if (entry.meta) {
+      sections.push(entry.meta);
+    }
+    (entry.highlights || []).forEach((item) => sections.push(`- ${item}`));
+  });
+  sections.push("");
+  sections.push("PROJECTS");
+  (data.projects || []).forEach((project) => {
+    sections.push(project.name);
+    if (project.meta) {
+      sections.push(project.meta);
+    }
+    (project.highlights || []).forEach((item) => sections.push(`- ${item}`));
+  });
+  sections.push("");
+  sections.push("EDUCATION");
+  (data.education || []).forEach((entry) => {
+    sections.push([entry.institution, entry.degree].filter(Boolean).join(" - "));
+    if (entry.meta) {
+      sections.push(entry.meta);
+    }
+  });
 
   return sections.join("\n");
 }
@@ -657,18 +1008,19 @@ export async function generateResumePdf({
   selfDescription,
   jobDescription
 }) {
-  const html = buildResumeHtml({
+  const tailoredResume = await generateTailoredResumeData({
     resume,
     selfDescription,
     jobDescription
   });
+  const html = buildResumeHtml(tailoredResume);
 
   try {
     return await generatePdfFromHtml(html);
   } catch (err) {
     console.log("❌ Styled resume PDF failed, using plain PDF fallback:", err.message);
     return createSimplePdf(
-      buildResumeText({ resume, selfDescription, jobDescription })
+      buildResumeTextFromData(tailoredResume)
     );
   }
 }
