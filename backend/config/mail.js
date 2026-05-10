@@ -2,42 +2,24 @@ import nodemailer from "nodemailer";
 
 export const sendOtpEmail = async (email, otp) => {
   try {
-    console.log("STARTING MAIL SERVICE");
-
     const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
+      service: "gmail",
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      connectionTimeout: 10000,
     });
 
-    await transporter.verify();
-
-    console.log("SMTP VERIFIED ✅");
-
     const info = await transporter.sendMail({
-      from: `"Prep AI" <${process.env.EMAIL_USER}>`,
+      from: `"MERN Auth" <${process.env.EMAIL_USER}>`,
       to: email,
-      subject: "OTP Verification",
-      html: `
-        <div style="font-family:sans-serif">
-          <h2>Your OTP Code</h2>
-          <h1>${otp}</h1>
-          <p>This OTP expires in 10 minutes.</p>
-        </div>
-      `,
+      subject: "Your OTP Code",
+      text: `Your OTP is: ${otp}`,
+      html: `<h2>Thanks for joining! Your verification code is ${otp}</h2>`
     });
 
     console.log("EMAIL SENT:", info.response);
-
-    return true;
-
   } catch (error) {
-    console.log("FULL EMAIL ERROR:", error);
-    throw error;
+    console.log("EMAIL ERROR:", error);
   }
 };
