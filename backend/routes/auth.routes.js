@@ -27,7 +27,7 @@ router.get("/google/callback",
   (req, res) => {
     const tokens = generateTokens(req.user._id);
     setCookies(res, tokens.accessToken, tokens.refreshToken);
-res.redirect(`${process.env.FRONTEND_URL}/dashboard`);  }
+res.redirect(`${process.env.FRONTEND_URL}/interview`);  }
 );
 
 // GITHUB
@@ -40,7 +40,7 @@ router.get("/github/callback",
   (req, res) => {
     const tokens = generateTokens(req.user._id);
     setCookies(res, tokens.accessToken, tokens.refreshToken);
-res.redirect(`${process.env.FRONTEND_URL}/dashboard`);  }
+res.redirect(`${process.env.FRONTEND_URL}/interview`);  }
 );
 router.get("/refresh", refreshToken);
 router.post("/logout", logout);
