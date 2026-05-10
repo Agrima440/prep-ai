@@ -7,8 +7,8 @@ export const sendOtpEmail = async (email, otp) => {
     console.log("SENDING EMAIL WITH RESEND");
 
     const data = await resend.emails.send({
-      from: "agrimasharma47@gmail.com",
-      to: email,
+      from: "Prep AI <onboarding@resend.dev>",
+      to: "agrimasharma47@gmail.com", // ONLY YOUR EMAIL FOR TESTING
       subject: "OTP Verification",
       html: `
         <div style="font-family:sans-serif">
@@ -21,10 +21,7 @@ export const sendOtpEmail = async (email, otp) => {
 
     console.log("EMAIL SENT:", data);
 
-    return true;
-
   } catch (error) {
     console.log("RESEND ERROR:", error);
-    throw error;
   }
 };
