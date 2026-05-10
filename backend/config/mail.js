@@ -7,7 +7,7 @@ export const sendOtpEmail = async (email, otp) => {
     console.log("SENDING EMAIL WITH RESEND");
 
     const data = await resend.emails.send({
-      from: "Prep AI <onboarding@resend.dev>",
+      from: "agrimasharma47@gmail.com",
       to: email,
       subject: "OTP Verification",
       html: `
