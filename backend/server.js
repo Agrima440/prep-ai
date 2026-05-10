@@ -14,8 +14,6 @@ import { connectDB } from "./config/db.js";
 // import {resume, jobDescription, selfDescription } from "./services/temp.js";
 
 
-console.log("EMAIL_USER:", process.env.EMAIL_USER);
-console.log("EMAIL_PASS EXISTS:", !!process.env.EMAIL_PASS);
 connectDB();
 // generateInterviewReport({resume, selfDescription, jobDescription})
 // invokeGeminiAi();
