@@ -26,7 +26,7 @@ export default function OTP() {
       await api.post("/auth/verify-otp", { email, otp: finalOtp });
 
       toast.success("Verified successfully 🚀");
-      navigate("/login");
+      navigate("/interview");
 
     } catch (err) {
       toast.error(err.response?.data);
