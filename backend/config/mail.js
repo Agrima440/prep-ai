@@ -1,14 +1,23 @@
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import nodemailer from "nodemailer";
 
 export const sendOtpEmail = async (email, otp) => {
   try {
-    console.log("SENDING EMAIL WITH RESEND");
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS,
+      },
+      tls: {
+        rejectUnauthorized: false,
+      },
+    });
 
-    const data = await resend.emails.send({
-      from: "Prep AI <onboarding@resend.dev>",
-      to: email, // ONLY YOUR EMAIL FOR TESTING
+    await transporter.sendMail({
+      from: `"Prep AI" <${process.env.EMAIL_USER}>`,
+      to: email,
       subject: "OTP Verification",
       html: `
         <div style="font-family:sans-serif">
@@ -19,9 +28,10 @@ export const sendOtpEmail = async (email, otp) => {
       `,
     });
 
-    console.log("EMAIL SENT:", data);
+    console.log("EMAIL SENT");
 
   } catch (error) {
-    console.log("RESEND ERROR:", error);
+    console.log("FULL EMAIL ERROR:", error);
+    throw error;
   }
 };
